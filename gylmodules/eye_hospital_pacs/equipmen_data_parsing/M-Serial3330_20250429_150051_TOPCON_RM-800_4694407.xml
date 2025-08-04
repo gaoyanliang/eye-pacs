@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="Shift-JIS" ?>
+<Ophthalmology xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:nsCommon="http://www.joia.or.jp/standardized/namespaces/Common" xmlns:nsREF="http://www.joia.or.jp/standardized/namespaces/REF" xsi:schemaLocation="http://www.joia.or.jp/standardized/namespaces/Common Common_schema.xsd http://www.joia.or.jp/standardized/namespaces/REF REF_schema.xsd">
+	<nsCommon:Common>
+		<nsCommon:Company>TOPCON</nsCommon:Company>
+		<nsCommon:ModelName>RM-800</nsCommon:ModelName>
+		<nsCommon:MachineNo>01</nsCommon:MachineNo>
+		<nsCommon:ROMVersion>1.05.08</nsCommon:ROMVersion>
+		<nsCommon:Version>1.2</nsCommon:Version>
+		<nsCommon:Date>2025-04-29</nsCommon:Date>
+		<nsCommon:Time>15:00:51</nsCommon:Time>
+		<nsCommon:Patient>
+			<nsCommon:No.>3330</nsCommon:No.>
+			<nsCommon:ID>3330</nsCommon:ID>
+			<nsCommon:FirstName></nsCommon:FirstName>
+			<nsCommon:MiddleName></nsCommon:MiddleName>
+			<nsCommon:LastName></nsCommon:LastName>
+			<nsCommon:Sex></nsCommon:Sex>
+			<nsCommon:Age></nsCommon:Age>
+			<nsCommon:DOB></nsCommon:DOB>
+			<nsCommon:NameJ1></nsCommon:NameJ1>
+			<nsCommon:NameJ2></nsCommon:NameJ2>
+		</nsCommon:Patient>
+		<nsCommon:Operator>
+			<nsCommon:No.></nsCommon:No.>
+			<nsCommon:ID></nsCommon:ID>
+		</nsCommon:Operator>
+	</nsCommon:Common>
+	<nsREF:Measure type="REF">
+		<nsREF:VD unit="mm">12.00</nsREF:VD>
+		<nsREF:DiopterStep unit="D">0.25</nsREF:DiopterStep>
+		<nsREF:AxisStep unit="deg">1</nsREF:AxisStep>
+		<nsREF:CylinderMode>mix</nsREF:CylinderMode>
+		<nsREF:REF>
+			<nsREF:R>
+				<nsREF:List No="1">
+					<nsREF:Sphere unit="D">-6.50</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">-0.25</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">161</nsREF:Axis>
+					<nsREF:SE unit="D">-6.75</nsREF:SE>
+					<nsREF:CataractMode></nsREF:CataractMode>
+					<nsREF:IOLMode></nsREF:IOLMode>
+					<nsREF:ConfidenceIndex></nsREF:ConfidenceIndex>
+				</nsREF:List>
+				<nsREF:List No="2">
+					<nsREF:Sphere unit="D">-6.25</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">-0.25</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">154</nsREF:Axis>
+					<nsREF:SE unit="D">-6.50</nsREF:SE>
+					<nsREF:CataractMode></nsREF:CataractMode>
+					<nsREF:IOLMode></nsREF:IOLMode>
+					<nsREF:ConfidenceIndex></nsREF:ConfidenceIndex>
+				</nsREF:List>
+				<nsREF:List No="3">
+					<nsREF:Sphere unit="D">-6.25</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">0.0</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">0</nsREF:Axis>
+					<nsREF:SE unit="D">-6.25</nsREF:SE>
+					<nsREF:CataractMode></nsREF:CataractMode>
+					<nsREF:IOLMode></nsREF:IOLMode>
+					<nsREF:ConfidenceIndex></nsREF:ConfidenceIndex>
+				</nsREF:List>
+				<nsREF:Median>
+					<nsREF:Sphere unit="D">-6.25</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">-0.25</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">161</nsREF:Axis>
+					<nsREF:SE unit="D">-6.50</nsREF:SE>
+				</nsREF:Median>
+			</nsREF:R>
+			<nsREF:L>
+				<nsREF:List No="1">
+					<nsREF:Sphere unit="D">-5.25</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">-0.75</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">19</nsREF:Axis>
+					<nsREF:SE unit="D">-5.75</nsREF:SE>
+					<nsREF:CataractMode></nsREF:CataractMode>
+					<nsREF:IOLMode></nsREF:IOLMode>
+					<nsREF:ConfidenceIndex></nsREF:ConfidenceIndex>
+				</nsREF:List>
+				<nsREF:List No="2">
+					<nsREF:Sphere unit="D">-5.25</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">-0.75</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">20</nsREF:Axis>
+					<nsREF:SE unit="D">-5.75</nsREF:SE>
+					<nsREF:CataractMode></nsREF:CataractMode>
+					<nsREF:IOLMode></nsREF:IOLMode>
+					<nsREF:ConfidenceIndex></nsREF:ConfidenceIndex>
+				</nsREF:List>
+				<nsREF:List No="3">
+					<nsREF:Sphere unit="D">-5.25</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">-1.00</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">21</nsREF:Axis>
+					<nsREF:SE unit="D">-5.75</nsREF:SE>
+					<nsREF:CataractMode></nsREF:CataractMode>
+					<nsREF:IOLMode></nsREF:IOLMode>
+					<nsREF:ConfidenceIndex></nsREF:ConfidenceIndex>
+				</nsREF:List>
+				<nsREF:Median>
+					<nsREF:Sphere unit="D">-5.25</nsREF:Sphere>
+					<nsREF:Cylinder unit="D">-0.75</nsREF:Cylinder>
+					<nsREF:Axis unit="deg">20</nsREF:Axis>
+					<nsREF:SE unit="D">-5.75</nsREF:SE>
+				</nsREF:Median>
+			</nsREF:L>
+		</nsREF:REF>
+		<nsREF:PD>
+			<nsREF:WorkingDistance unit="cm"></nsREF:WorkingDistance>
+			<nsREF:Distance unit="mm">65.50</nsREF:Distance>
+			<nsREF:Near unit="mm">65.50</nsREF:Near>
+		</nsREF:PD>
+	</nsREF:Measure>
+</Ophthalmology>
