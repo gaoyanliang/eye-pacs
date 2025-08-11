@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request, send_from_directory, send_file, m
 from gylmodules import global_config
 from gylmodules.eye_hospital_pacs.monitor_new_files import DEST_BASE_DIR
 from gylmodules.global_tools import api_response, validate_params
-from gylmodules.eye_hospital_pacs import ehp_server
+from gylmodules.eye_hospital_pacs import ehp_server, monitor_new_files, pdf_ocr_analysis
 
 ehp_system = Blueprint('Eye Hospital Pacs', __name__, url_prefix='/ehp')
 
@@ -93,4 +93,17 @@ def upload_file():
             return {'code': 20000, 'res': 'File uploaded successfully'}
         except Exception as e:
             return {'code': 50000, 'res': str(e)}
+
+
+@ehp_system.route('/monitor_task', methods=['POST', 'GET'])
+@api_response
+def monitor_task():
+    monitor_new_files.monitor_directory()
+
+
+@ehp_system.route('/analysis_task', methods=['POST', 'GET'])
+@api_response
+def analysis_task():
+    pdf_ocr_analysis.regularly_parsing_eye_report()
+
 

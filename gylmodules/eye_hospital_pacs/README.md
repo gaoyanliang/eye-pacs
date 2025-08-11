@@ -374,12 +374,12 @@ sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
 
 找到 bind-address 并修改为：
 
-bind-address = 0..0.0.0
+bind-address = 0.0.0.0
 
 
 2. 创建远程用户：
-CREATE USER 'username'@'%' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON *.* TO 'username'@'%';
+CREATE USER 'root'@'%' IDENTIFIED BY 'nsyy0601.';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%';
 FLUSH PRIVILEGES;
 
 
@@ -402,11 +402,127 @@ FLUSH PRIVILEGES;
 
 
 
+## 使用 Nginx 部署前端项目
+
+在 Ubuntu 24.04 上部署 Vue 前端项目，可以通过 Nginx 或 PM2 实现。以下是详细步骤：
+
+---
+
+## **方法 1：使用 Nginx 部署（生产环境推荐）**
+### **1. 安装 Node.js 和 npm**
+Vue 项目需要 Node.js 环境：
+```bash
+# 使用 NodeSource 安装最新 LTS 版本
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 验证安装
+node -v  # 应输出 v18.x 或更高
+npm -v
+```
+
+### **2. 安装依赖并构建 Vue 项目**
+假设你的 Vue 项目代码在 `~/my-vue-project`：
+```bash
+cd ~/my-vue-project
+
+# 安装依赖
+npm install
+
+# 构建生产环境代码（生成 dist 目录）
+npm run build
+```
+
+### **3. 安装并配置 Nginx**
+```bash
+# 安装 Nginx
+sudo apt install nginx
+
+# 创建 Nginx 配置文件
+sudo nano /etc/nginx/sites-available/my-vue-app
+```
+粘贴以下配置（替换 `your_domain.com` 为你的域名或服务器 IP）：
+```nginx
+server {
+    listen 80;
+    server_name your_domain.com;  # 改为你的域名或 IP
+
+    root /var/www/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 可选：静态文件缓存
+    location /assets {
+        expires 1y;
+        add_header Cache-Control "public";
+    }
+}
+```
+启用配置并重启 Nginx：
+```bash
+sudo ln -s /etc/nginx/sites-available/my-vue-app /etc/nginx/sites-enabled
+sudo nginx -t  # 测试配置语法
+sudo systemctl restart nginx
+```
+
+### **4. 开放防火墙（如果启用）**
+```bash
+sudo ufw allow 'Nginx Full'  # 允许 HTTP/HTTPS
+```
+
+### **5. 访问项目**
+- 通过浏览器访问 `http://your_domain.com` 或 `http://服务器IP`。
+
+---
+
+## **常见问题解决**
+### **1. 路由 404 问题（Vue SPA）**
+确保 Nginx 配置中包含：
+```nginx
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+### **2. 静态资源加载失败**
+检查 `dist` 目录权限：
+```bash
+sudo chown -R www-data:www-data /home/your_username/my-vue-project/dist
+```
+
+### **3. 端口冲突**
+- 如果端口 80 被占用，修改 Nginx 的 `listen` 端口（如 `8080`）。
+- 如果 3000 端口被占用，修改 PM2 的启动端口。
+
+---
+
+## **总结**
+| 方法       | 适用场景                  | 优点                     |
+|------------|--------------------------|--------------------------|
+| **Nginx**  | 生产环境静态部署          | 高性能，支持 HTTPS/缓存  |
+| **PM2**    | 开发或 SSR 项目           | 灵活，适合 Node.js 服务  |
+
+根据需求选择合适的方式即可！
 
 
 
+## 添加 NVIDIA 仓库
+
+检查显卡版本
+ nvidia-smi
 
 
+sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub
+sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/ /"
+
+# 安装 CUDA Toolkit 12.9
+sudo apt install -y cuda-toolkit-12-9
+
+# 验证安装
+nvcc --version  # 应显示 CUDA 12.9
 
 
 

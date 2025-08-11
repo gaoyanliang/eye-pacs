@@ -1,6 +1,6 @@
 # 每 10 s扫描一次共享目录，将新文件移动到指定目录
 # 根据文件代码，重命名文件名字
-
+import logging
 import os
 import time
 import shutil
@@ -10,12 +10,58 @@ from gylmodules import global_config
 from gylmodules.utils.db_utils import DbUtil
 
 
+logger = logging.getLogger(__name__)
+
+
 # 配置参数
 SOURCE_DIR = "/Users/gaoyanliang/nsyy/eye-pacs/gylmodules/eye_hospital_pacs/1" \
     if global_config.run_in_local else "/srv/samba/shared"  # 监控的共享目录
 DEST_BASE_DIR = "/Users/gaoyanliang/nsyy/eye-pacs/gylmodules/eye_hospital_pacs/2" \
     if global_config.run_in_local else "/home/nsyy/pdf-report-catalog"  # 目标基础目录
 CHECK_INTERVAL = 20  # 检查间隔（秒）
+
+MAX_RETRIES = 3  # 最大重试次数
+FILE_STABILITY_CHECK_INTERVAL = 1  # 文件稳定性检查间隔（秒）
+FILE_STABILITY_CHECKS = 3  # 文件稳定性检查次数
+
+
+"""检查文件是否被其他进程锁定（Linux系统）"""
+
+
+def is_file_locked(filepath):
+    import subprocess
+    try:
+        output = subprocess.check_output(['lsof', filepath], stderr=subprocess.PIPE)
+        return bool(output)
+    except subprocess.CalledProcessError:
+        return False
+    except Exception:
+        # 如果lsof不可用，则跳过锁定检查
+        return False
+
+
+"""改进的文件稳定性检查"""
+
+
+def is_file_stable(filepath):
+    sizes, mtimes = [], []
+    for _ in range(FILE_STABILITY_CHECKS):
+        try:
+            sizes.append(os.path.getsize(filepath))
+            mtimes.append(os.path.getmtime(filepath))
+            time.sleep(FILE_STABILITY_CHECK_INTERVAL)
+        except OSError:
+            return False
+
+    # 检查文件大小和修改时间是否稳定
+    if len(set(sizes)) != 1 or len(set(mtimes)) != 1:
+        return False
+
+    # 检查文件是否被锁定
+    if is_file_locked(filepath):
+        return False
+
+    return True
 
 
 def get_dated_subdir():
@@ -30,50 +76,30 @@ def ensure_dirs_exist():
     """确保基础目录存在"""
     os.makedirs(SOURCE_DIR, exist_ok=True)
     os.makedirs(DEST_BASE_DIR, exist_ok=True)
-    print(datetime.now(), f"监控目录: {SOURCE_DIR}")
-    print(datetime.now(), f"目标基础目录: {DEST_BASE_DIR}")
+    logger.debug(datetime.now(), f"监控目录: {SOURCE_DIR}")
+    logger.debug(datetime.now(), f"目标基础目录: {DEST_BASE_DIR}")
 
 
-def scan_files(directory):
-    """递归扫描目录中的所有文件，返回相对路径集合"""
-    file_set = set()
-    for root, _, files in os.walk(directory):
-        for filename in files:
-            file_path = os.path.join(root, filename)
-            rel_path = os.path.relpath(file_path, directory)
-            file_set.add(rel_path)
-    return file_set
-
-
-def is_file_stable(filepath, check_interval=2, max_attempts=5):
-    """检查文件大小是否稳定"""
-    last_size = -1
-    for _ in range(max_attempts):
-        current_size = os.path.getsize(filepath)
-        if current_size == last_size:
-            return True
-        last_size = current_size
-        time.sleep(check_interval)
-    return False
-
-
-def process_file(src_rel_path):
+def process_file(src_rel_path, retry_count=0):
     """处理文件：保持原始目录结构，移动到当天日期的子目录"""
     try:
-        # 获取当天日期目录
-        dated_dir = get_dated_subdir()
-
         # 源文件完整路径
         src_full_path = os.path.join(SOURCE_DIR, src_rel_path)
 
-        # 1. 基础检查
+        # 基础检查
         if not os.path.exists(src_full_path):
-            print(f"文件不存在: {src_full_path}")
+            logger.warning(f"文件不存在: {src_full_path}")
             return False, ''
-        # 3. 检查文件大小稳定性
+
+        # 检查文件稳定性
         if not is_file_stable(src_full_path):
-            print(f"文件大小不稳定: {src_full_path}")
-            return False, ''
+            if retry_count < MAX_RETRIES:
+                logger.warning(f"文件不稳定，将重试({retry_count+1}/{MAX_RETRIES}): {src_full_path}")
+                time.sleep(5)  # 等待更长时间再重试
+                return process_file(src_rel_path, retry_count + 1)
+            else:
+                logger.warning(f"文件仍不稳定，放弃处理: {src_full_path}")
+                return False, ''
 
         # 分离文件名和扩展名
         dirname, filename = os.path.split(src_rel_path)
@@ -111,6 +137,8 @@ def process_file(src_rel_path):
 
         new_filename = f"{basename}_{date_str}{ext}"
 
+        # 获取当天日期目录
+        dated_dir = get_dated_subdir()
         # 目标路径（保持原始目录结构）
         dest_full_path = os.path.join(dated_dir, dirname, new_filename)
         dest_dir = os.path.dirname(dest_full_path)
@@ -120,11 +148,11 @@ def process_file(src_rel_path):
 
         # 移动文件
         shutil.move(src_full_path, dest_full_path)
-        print(datetime.now(), f"文件已移动: {src_rel_path} -> {dated_dir}/{dirname}/{new_filename}")
+        logger.debug(f"文件已移动: {src_rel_path} -> {dated_dir}/{dirname}/{new_filename}")
         return True, (new_filename, dest_full_path.replace('/', '&'), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), machine)
 
     except Exception as e:
-        print(datetime.now(), f"处理文件 {src_rel_path} 失败: {e}")
+        logger.error(f"处理文件 {src_rel_path} 失败: {e}")
         return False, ''
 
 
@@ -141,7 +169,7 @@ def monitor_directory():
             now = datetime.now()
             if now.date() != last_check_date:
                 new_dated_dir = get_dated_subdir()
-                print(datetime.now(), f"日期变化，新日期目录: {new_dated_dir}")
+                logger.debug(datetime.now(), f"日期变化，新日期目录: {new_dated_dir}")
                 current_dated_dir = new_dated_dir
                 last_check_date = now.date()
 
@@ -150,6 +178,8 @@ def monitor_directory():
             process_file_list = []
             for root, _, files in os.walk(SOURCE_DIR):
                 for filename in files:
+                    if str(filename).startswith('.'):
+                        continue
                     src_path = os.path.join(root, filename)
                     rel_path = os.path.relpath(src_path, SOURCE_DIR)
 
@@ -159,9 +189,9 @@ def monitor_directory():
                             processed_count += 1
                             process_file_list.append(path)
                         else:
-                            print(datetime.now(), f"文件处理失败，将重试: {rel_path}")
+                            logger.warning(f"文件处理失败，将重试: {rel_path}")
                     except Exception as e:
-                        print(datetime.now(), f"处理文件异常: {rel_path} - {str(e)}")
+                        logger.error(f"处理文件异常: {rel_path} - {str(e)}")
 
             if process_file_list:
                 # 批量插入数据库
@@ -177,9 +207,9 @@ def monitor_directory():
             time.sleep(CHECK_INTERVAL)
 
     except KeyboardInterrupt:
-        print(datetime.now(), "监控程序已正常停止")
+        logger.error("监控程序已正常停止")
     except Exception as e:
-        print(datetime.now(), f"监控发生致命错误: {str(e)}")
+        logger.error(f"监控发生致命错误: {str(e)}")
         raise
 
 

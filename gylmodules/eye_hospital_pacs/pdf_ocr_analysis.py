@@ -1,6 +1,7 @@
 # pdf 文件解析，定时执行
 
 import json
+import logging
 from datetime import datetime
 
 import numpy as np
@@ -16,6 +17,9 @@ from typing import Optional
 
 from gylmodules import global_config
 from gylmodules.utils.db_utils import DbUtil
+
+
+logger = logging.getLogger(__name__)
 
 
 def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "output_jpg"), dpi=300):
@@ -35,7 +39,7 @@ def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "out
         else:
             images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg')
     except Exception as e:
-        print(datetime.now(), f"{pdf_path} PDF 转换失败: {e}")
+        logger.error(f"{pdf_path} PDF 转换失败: {e}")
         return []
 
     # 保存图片并记录完整路径
@@ -50,13 +54,13 @@ def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "out
             full_path = os.path.abspath(jpg_path)
             jpg_paths.append(full_path)
         except Exception as e:
-            print(datetime.now(), f"保存第 {i + 1} 页失败: {e}")
+            logger.error(f"保存第 {i + 1} 页失败: {e}")
 
     return jpg_paths
 
 
 def delete_files(file_paths):
-    print("正在删除文件...", file_paths)
+    logger.debug(f"正在删除文件... {file_paths}")
     """
     根据给定的文件路径删除文件。
     """
@@ -75,10 +79,10 @@ def delete_files(file_paths):
                 results[file_path] = True
             else:
                 results[file_path] = False
-                print(datetime.now(), f"文件不存在: {os.path.abspath(file_path)}")
+                logger.warning(f"文件不存在: {os.path.abspath(file_path)}")
         except Exception as e:
             results[file_path] = False
-            print(datetime.now(), f"删除文件失败 ({os.path.abspath(file_path)}): {e}")
+            logger.error(f"删除文件失败 ({os.path.abspath(file_path)}): {e}")
 
     return results
 
@@ -142,36 +146,41 @@ class OCRProcessor:
                                                  cls_model_dir=None  # 显式禁用分类模型
                                                  )
                 else:
-                    self._ocr_engine = PaddleOCR(lang='ch', use_angle_cls=False,
-                                                 use_gpu=False, enable_mkldnn=False, show_log=False,
-                                                 det_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_det_infer/',
-                                                 rec_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_rec_infer/',
-                                                 cls_model_dir=None  # 显式禁用分类模型
-                                                 )
-                    # TODO 驱动有问题 暂时不使用GPU
-                    # self._ocr_engine = PaddleOCR(
-                    #     # 硬件配置
-                    #     lang='ch', use_gpu=True, gpu_mem=7000,  # 7GB显存限制
-                    #
-                    #     # 模型选择（平衡速度与精度）
-                    #     det_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_det_infer/',
-                    #     rec_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_rec_infer/',
-                    #     cls_model_dir=None,  # 禁用方向分类（PDF通常方向固定）
-                    #
-                    #     # # 性能参数
-                    #     # det_limit_side_len=1600,  # 适应A4文档300dpi扫描件
-                    #     # rec_batch_num=12,  # 根据显存调整
-                    #     # use_tensorrt=False,  # GTX 10系列不支持TensorRT加速
-                    #     #
-                    #     # # 质量参数
-                    #     # det_db_score_mode="fast",  # 平衡速度与精度
-                    #     # show_log=False, use_angle_cls=True,  # 服务器建议启用方向分类
-                    #     # cls_batch_num=10, use_mp=True,  # 多进程
-                    #     # total_process_num=4,  # 4个进程
-                    #     # enable_mkldnn=False  # Linux服务器可改为True（Intel CPU加速）
-                    # )
+                    # self._ocr_engine = PaddleOCR(lang='ch', use_angle_cls=False,
+                    #                              use_gpu=False, enable_mkldnn=False, show_log=False,
+                    #                              det_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_det_infer/',
+                    #                              rec_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_rec_infer/',
+                    #                              cls_model_dir=None  # 显式禁用分类模型
+                    #                              )
+                    self._ocr_engine = PaddleOCR(
+                        # 硬件配置
+                        lang='ch', use_gpu=True, gpu_mem=7000,  # 7GB显存限制
+
+                        # 模型选择（平衡速度与精度）
+                        det_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_det_infer/',
+                        rec_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_rec_infer/',
+                        cls_model_dir=None,  # 禁用方向分类（PDF通常方向固定）
+
+                        # ===== 性能优化 =====
+                        det_limit_side_len=2048,  # 提高分辨率适应高清扫描件
+                        rec_batch_num=8,  # 增大批次（RTX 4060显存充足）
+                        use_tensorrt=True,  # 启用TensorRT加速（RTX 40系列支持）
+
+                        # ===== 质量参数 =====
+                        det_db_score_mode="fast",  # 快速检测模式
+                        show_log=False,  # 关闭日志减少I/O
+                        use_angle_cls=False,  # 禁用方向分类（提升速度）
+                        use_mp=True,  # 启用多进程
+                        total_process_num=4,  # 6进程（根据CPU核心数调整）
+
+                        # ===== 高级优化 =====
+                        enable_mkldnn=False,  # 禁用Intel加速（GPU优先）
+                        cpu_threads=4,  # CPU线程数（若GPU满载可辅助）
+                        det_algorithm='DB',  # 使用DB算法（默认最优）
+                        rec_algorithm='SVTR_LCNet'  # PP-OCRv4的轻量识别算法
+                    )
             except Exception as e:
-                print(datetime.now(), f"初始化失败: {str(e)}")
+                logger.error(f"初始化失败: {str(e)}")
                 raise
         return self._ocr_engine
 
@@ -201,7 +210,7 @@ class OCRProcessor:
 
             return np.array(img)
         except Exception as e:
-            print(datetime.now(), f"图像加载失败: {str(e)}")
+            logger.error(f"图像加载失败: {str(e)}")
             raise
 
     def ocr_image(self, image_input: Union[str, np.ndarray, bytes], language: str = 'ch', merge_level: int = 1) -> Dict:
@@ -233,7 +242,7 @@ class OCRProcessor:
             return ret_data
 
         except Exception as e:
-            print(datetime.now(), f"OCR处理失败: {str(e)}")
+            logger.error(f"OCR处理失败: {str(e)}")
             return {"code": 50000, "error": str(e)}
 
 
@@ -479,7 +488,7 @@ def analysis_pdf(file_path):
         start_time = time.time()
         # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
         jpg_paths = pdf_to_jpg(file_path)
-        print(datetime.now(), f'{file_path} 已转换为图片，数量 {len(jpg_paths)}, 耗时 {time.time() - start_time} 秒')
+        logger.debug(f'{file_path} 已转换为图片，数量 {len(jpg_paths)}, 耗时 {time.time() - start_time} 秒')
         start_time = time.time()
 
         # 解析图片，识别患者姓名 & 提取数据
@@ -497,15 +506,20 @@ def analysis_pdf(file_path):
 
             all_texts = [item["text"] for item in result.get("data", [])]
             joined_text = " ".join(all_texts)
+
+            logger.info(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
+
             values = extract_quguang(joined_text)
             patient_name = values.get('姓名', '')
-            print(f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
+            logger.info(f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
             return patient_name, values
 
         result = processor.ocr_image(jpg_paths[0], merge_level=2)
         all_texts = [item["text"].replace('\n', ' ') for item in result.get("data", [])]
         joined_text = " ".join(all_texts)
         delete_files(jpg_paths)
+
+        logger.info(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
 
         if str(file_name).startswith("角膜内皮细胞报告"):
             # 如果是 角膜内皮细胞报告 提取所有 CD 值
@@ -523,13 +537,13 @@ def analysis_pdf(file_path):
                 values['right_eye_time'] = matches[0]
                 values['left_eye_time'] = matches[1]
 
-        print(f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
+        logger.info(f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
         patient_name = extract_name_from_text(joined_text)
         values['姓名'] = patient_name if patient_name else ''
         return patient_name, values
 
     except Exception as e:
-        print(datetime.now(), f"解析文件 {file_path} 失败: {e}")
+        logger.error(f"解析文件 {file_path} 失败: {e}")
         return None, {}
 
 
