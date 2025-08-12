@@ -54,5 +54,5 @@ if __name__ == '__main__':
     t = threading.Thread(target=start_schedule_work)
     t.setDaemon
     t.start()
-    port = 8081 if global_config.run_in_local else 8080
-    socketio.run(server_app, host='0.0.0.0', port=port, debug=True, use_reloader=True)
+    # port = 8081 if global_config.run_in_local else 8080
+    socketio.run(server_app, host='0.0.0.0', port=8080, debug=True, use_reloader=True)

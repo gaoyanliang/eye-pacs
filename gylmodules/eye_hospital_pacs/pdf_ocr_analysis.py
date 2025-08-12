@@ -1,10 +1,9 @@
 # pdf 文件解析，定时执行
 
 import json
-import logging
-from datetime import datetime
 
 import numpy as np
+from datetime import datetime
 from PIL import Image
 from paddleocr import PaddleOCR
 import time
@@ -17,9 +16,6 @@ from typing import Optional
 
 from gylmodules import global_config
 from gylmodules.utils.db_utils import DbUtil
-
-
-logger = logging.getLogger(__name__)
 
 
 def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "output_jpg"), dpi=300):
@@ -39,7 +35,7 @@ def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "out
         else:
             images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg')
     except Exception as e:
-        logger.error(f"{pdf_path} PDF 转换失败: {e}")
+        print(datetime.now(), f"ERROR {pdf_path} PDF 转换失败: {e}")
         return []
 
     # 保存图片并记录完整路径
@@ -54,13 +50,12 @@ def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "out
             full_path = os.path.abspath(jpg_path)
             jpg_paths.append(full_path)
         except Exception as e:
-            logger.error(f"保存第 {i + 1} 页失败: {e}")
+            print(datetime.now(), f"ERROR 保存第 {i + 1} 页失败: {e}")
 
     return jpg_paths
 
 
 def delete_files(file_paths):
-    logger.debug(f"正在删除文件... {file_paths}")
     """
     根据给定的文件路径删除文件。
     """
@@ -79,10 +74,10 @@ def delete_files(file_paths):
                 results[file_path] = True
             else:
                 results[file_path] = False
-                logger.warning(f"文件不存在: {os.path.abspath(file_path)}")
+                print(datetime.now(), f"ERROR 文件不存在: {os.path.abspath(file_path)}")
         except Exception as e:
             results[file_path] = False
-            logger.error(f"删除文件失败 ({os.path.abspath(file_path)}): {e}")
+            print(datetime.now(), f"删除文件失败 ({os.path.abspath(file_path)}): {e}")
 
     return results
 
@@ -180,7 +175,7 @@ class OCRProcessor:
                         rec_algorithm='SVTR_LCNet'  # PP-OCRv4的轻量识别算法
                     )
             except Exception as e:
-                logger.error(f"初始化失败: {str(e)}")
+                print(datetime.now(), f"初始化失败: {str(e)}")
                 raise
         return self._ocr_engine
 
@@ -210,7 +205,7 @@ class OCRProcessor:
 
             return np.array(img)
         except Exception as e:
-            logger.error(f"图像加载失败: {str(e)}")
+            print(datetime.now(), f"图像加载失败: {str(e)}")
             raise
 
     def ocr_image(self, image_input: Union[str, np.ndarray, bytes], language: str = 'ch', merge_level: int = 1) -> Dict:
@@ -242,7 +237,7 @@ class OCRProcessor:
             return ret_data
 
         except Exception as e:
-            logger.error(f"OCR处理失败: {str(e)}")
+            print(datetime.now(), f"OCR处理失败: {str(e)}")
             return {"code": 50000, "error": str(e)}
 
 
@@ -488,7 +483,7 @@ def analysis_pdf(file_path):
         start_time = time.time()
         # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
         jpg_paths = pdf_to_jpg(file_path)
-        logger.debug(f'{file_path} 已转换为图片，数量 {len(jpg_paths)}, 耗时 {time.time() - start_time} 秒')
+        print(datetime.now(), f'{file_path} 已转换为图片，数量 {len(jpg_paths)}, 耗时 {time.time() - start_time} 秒')
         start_time = time.time()
 
         # 解析图片，识别患者姓名 & 提取数据
@@ -498,20 +493,22 @@ def analysis_pdf(file_path):
         if str(file_name).startswith("屈光四图"):
             # 屈光四图
             img = Image.open(jpg_paths[0])
-            # 只解析数据部分
+            # 只解析数据部分 # 左侧1/3区域包含文字数据，右侧2/3是彩色图示
+            width, height = img.size
+            img = img.crop((0, 0, width // 3, height))
             crop_box = (0, 0, int(img.size[1] / 3), img.size[1])
             # 转成 numpy 数组再 OCR
-            result = processor.ocr_image(np.array(img.crop(crop_box)))
+            result = processor.ocr_image(np.array(img))
             delete_files(jpg_paths)
 
             all_texts = [item["text"] for item in result.get("data", [])]
             joined_text = " ".join(all_texts)
 
-            logger.info(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
+            print(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
 
             values = extract_quguang(joined_text)
             patient_name = values.get('姓名', '')
-            logger.info(f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
+            print(datetime.now(), f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
             return patient_name, values
 
         result = processor.ocr_image(jpg_paths[0], merge_level=2)
@@ -519,7 +516,7 @@ def analysis_pdf(file_path):
         joined_text = " ".join(all_texts)
         delete_files(jpg_paths)
 
-        logger.info(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
+        print(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
 
         if str(file_name).startswith("角膜内皮细胞报告"):
             # 如果是 角膜内皮细胞报告 提取所有 CD 值
@@ -537,13 +534,13 @@ def analysis_pdf(file_path):
                 values['right_eye_time'] = matches[0]
                 values['left_eye_time'] = matches[1]
 
-        logger.info(f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
+        print(datetime.now(), f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
         patient_name = extract_name_from_text(joined_text)
         values['姓名'] = patient_name if patient_name else ''
         return patient_name, values
 
     except Exception as e:
-        logger.error(f"解析文件 {file_path} 失败: {e}")
+        print(datetime.now(), f"解析文件 {file_path} 失败: {e}")
         return None, {}
 
 
@@ -553,18 +550,22 @@ def regularly_parsing_eye_report():
     report_list = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_reports "
                                f"WHERE report_value is null ORDER BY report_time limit 5")
 
-    value_list = []
-    for report in report_list:
-        file_path = report.get('report_addr').replace('&', '/')
-        if not os.path.exists(file_path) and not str(file_path).endswith(".pdf"):
-            continue
-        patient_name, values = analysis_pdf(file_path)
+    try:
+        value_list = []
+        for report in report_list:
+            file_path = report.get('report_addr').replace('&', '/')
+            if not os.path.exists(file_path) and not str(file_path).endswith(".pdf"):
+                continue
 
-        report_name = f"{patient_name}_{report.get('report_name')}" if patient_name else report.get('report_name')
-        report_value = json.dumps(values, ensure_ascii=False, default=str) if values else ''
-        db.execute(f"UPDATE nsyy_gyl.ehp_reports SET report_name = '{report_name}', report_value = '{report_value}' "
-                   f"WHERE report_id = {report.get('report_id')}", need_commit=True)
+            patient_name, values = analysis_pdf(file_path)
 
+            report_name = f"{patient_name}_{report.get('report_name')}" if patient_name else report.get('report_name')
+            report_value = json.dumps(values, ensure_ascii=False, default=str) if values else ''
+            db.execute(f"UPDATE nsyy_gyl.ehp_reports SET report_name = '{report_name}', report_value = '{report_value}' "
+                       f"WHERE report_id = {report.get('report_id')}", need_commit=True)
+    except Exception as e:
+        del db
+        raise Exception(e)
     del db
 
 

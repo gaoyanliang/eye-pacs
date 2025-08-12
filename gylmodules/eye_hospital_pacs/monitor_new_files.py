@@ -6,7 +6,7 @@ import time
 import shutil
 from datetime import datetime
 
-from gylmodules import global_config
+from gylmodules import global_config, global_tools
 from gylmodules.utils.db_utils import DbUtil
 
 
@@ -76,8 +76,8 @@ def ensure_dirs_exist():
     """确保基础目录存在"""
     os.makedirs(SOURCE_DIR, exist_ok=True)
     os.makedirs(DEST_BASE_DIR, exist_ok=True)
-    logger.debug(datetime.now(), f"监控目录: {SOURCE_DIR}")
-    logger.debug(datetime.now(), f"目标基础目录: {DEST_BASE_DIR}")
+    logger.debug(f"监控目录: {SOURCE_DIR}")
+    logger.debug(f"目标基础目录: {DEST_BASE_DIR}")
 
 
 def process_file(src_rel_path, retry_count=0):
@@ -169,7 +169,7 @@ def monitor_directory():
             now = datetime.now()
             if now.date() != last_check_date:
                 new_dated_dir = get_dated_subdir()
-                logger.debug(datetime.now(), f"日期变化，新日期目录: {new_dated_dir}")
+                logger.debug(f"日期变化，新日期目录: {new_dated_dir}")
                 current_dated_dir = new_dated_dir
                 last_check_date = now.date()
 
@@ -212,6 +212,9 @@ def monitor_directory():
         logger.error(f"监控发生致命错误: {str(e)}")
         raise
 
+
+def run_monitor():
+    global_tools.start_thread(monitor_directory)
 
 # if __name__ == "__main__":
 #     logger.info(f"文件将按日期存储在: {DEST_BASE_DIR}/YYYYMMDD/")

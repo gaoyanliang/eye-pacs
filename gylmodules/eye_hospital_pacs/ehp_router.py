@@ -98,12 +98,5 @@ def upload_file():
 @ehp_system.route('/monitor_task', methods=['POST', 'GET'])
 @api_response
 def monitor_task():
-    monitor_new_files.monitor_directory()
-
-
-@ehp_system.route('/analysis_task', methods=['POST', 'GET'])
-@api_response
-def analysis_task():
-    pdf_ocr_analysis.regularly_parsing_eye_report()
-
+    monitor_new_files.run_monitor()
 
