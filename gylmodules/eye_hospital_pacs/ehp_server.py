@@ -201,3 +201,77 @@ def place_on_file(patient_id, register_id, is_complete):
     db.execute(update_sql, need_commit=True)
     del db
 
+
+
+"""查询患者信息 / 当日挂号列表"""
+
+
+def query_patient_info(guahao_id, date_str):
+    import cx_Oracle
+    # 数据库连接配置（实际应用中应该从环境变量或配置文件中读取）
+    db_config = {'user': 'ZLHIS', 'password': "DAE42", 'dsn': '192.168.190.254:1521/orcl'}
+
+    # 根据是否有挂号ID决定查询类型
+    if not guahao_id:
+        # 查询当日所有挂号记录
+        sql = f"""
+        SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, 
+               b.名称 AS 就诊科室, a.执行人 AS 医生姓名 
+        FROM 病人挂号记录 a 
+        LEFT JOIN 部门表 b ON a.执行部门id = b.id 
+        WHERE 发生时间 >= f'{date_str} 00:00:00' AND 记录状态 = 1
+        """
+        params = {}
+    else:
+        # 查询特定挂号ID的详细信息
+        sql = """
+        SELECT t.id 挂号ID, t.no, t.门诊号, t2.就诊卡号, t2.住院号 病案号, t.姓名, t.性别, 
+               t2.出生日期, t2.婚姻状况, t2.国籍, t2.民族, '身份证' 证件类型, 
+               t2.身份证号 证件号码, t2.家庭地址 现住址, t2.家庭电话 联系电话,
+
+               t.登记时间 挂号时间, t.登记时间 报道时间, t.执行时间 就诊时间, 
+               fy.执行部门 就诊科室, t.执行人, ry.专业技术职务 职称,
+               CASE WHEN fy.执行部门 LIKE '%急诊%' THEN '急诊' ELSE '门诊' END 就诊类型,
+               DECODE(t.复诊, 1, '是', '否') 是否复诊
+        FROM 病人挂号记录 t 
+        JOIN 病人信息 t2 ON t.病人id = t2.病人id
+        LEFT JOIN 人员表 ry ON ry.姓名 = t.执行人
+        LEFT JOIN (
+            SELECT t10.病人id, t10.no, t11.名称 执行部门 
+            FROM 门诊费用记录 t10
+            JOIN 部门表 t11 ON t10.执行部门id = t11.id 
+            WHERE 记录性质 = 4 AND 记录状态 = 1
+        ) fy ON t.病人id = fy.病人id AND t.no = fy.no
+
+        WHERE t.id = :guahao_id
+        """
+        params = {'guahao_id': guahao_id}
+
+    try:
+        # 建立数据库连接
+        with cx_Oracle.connect(**db_config) as connection:
+            # 创建游标
+            with connection.cursor() as cursor:
+                # 执行查询
+                cursor.execute(sql, params)
+
+                # 获取列名
+                columns = [col[0].lower() for col in cursor.description]  # 统一转为小写
+
+                # 获取所有结果并转换为字典列表
+                results = []
+                for row in cursor:
+                    # 处理NULL值，将cx_Oracle的NULL转为Python的None
+                    row_dict = {}
+                    for i, col in enumerate(columns):
+                        row_dict[col] = row[i] if row[i] is not None else None
+                    results.append(row_dict)
+
+                return results[0] if guahao_id else results
+
+    except cx_Oracle.Error as error:
+        print(f"数据库查询出错: {error}")
+        return []
+    except Exception as e:
+        print(f"发生错误: {e}")
+        return []

@@ -100,3 +100,8 @@ def upload_file():
 def monitor_task():
     monitor_new_files.run_monitor()
 
+
+@ehp_system.route('/patient_info', methods=['POST', 'GET'])
+@api_response
+def patient_info(json_data):
+    return ehp_server.query_patient_info(json_data.get('guahao_id', ''), json_data.get('date_str', ''))

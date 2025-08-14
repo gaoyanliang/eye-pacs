@@ -504,8 +504,6 @@ def analysis_pdf(file_path):
             all_texts = [item["text"] for item in result.get("data", [])]
             joined_text = " ".join(all_texts)
 
-            print(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
-
             values = extract_quguang(joined_text)
             patient_name = values.get('姓名', '')
             print(datetime.now(), f"{jpg_paths[0]} 解析完成 耗时 {time.time() - start_time} 秒")
@@ -515,8 +513,6 @@ def analysis_pdf(file_path):
         all_texts = [item["text"].replace('\n', ' ') for item in result.get("data", [])]
         joined_text = " ".join(all_texts)
         delete_files(jpg_paths)
-
-        print(f"{jpg_paths[0]} 解析完成后的内容: {joined_text}")
 
         if str(file_name).startswith("角膜内皮细胞报告"):
             # 如果是 角膜内皮细胞报告 提取所有 CD 值
