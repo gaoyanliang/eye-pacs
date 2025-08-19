@@ -214,13 +214,9 @@ def query_patient_info(guahao_id, date_str):
     # 根据是否有挂号ID决定查询类型
     if not guahao_id:
         # 查询当日所有挂号记录
-        sql = f"""
-        SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, 
-               b.名称 AS 就诊科室, a.执行人 AS 医生姓名 
-        FROM 病人挂号记录 a 
-        LEFT JOIN 部门表 b ON a.执行部门id = b.id 
-        WHERE 发生时间 >= f'{date_str} 00:00:00' AND 记录状态 = 1
-        """
+        sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
+        a.执行人 AS 医生姓名 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
+        WHERE TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') AND a.记录状态 = 1"""
         params = {}
     else:
         # 查询特定挂号ID的详细信息

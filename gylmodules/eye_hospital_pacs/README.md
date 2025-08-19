@@ -526,7 +526,9 @@ nvcc --version  # 应显示 CUDA 12.9
 
 
 
+## 服务器 ubuntu24.04 设置固定id
 
+https://blog.csdn.net/xiaochong0302/article/details/138975287
 
 
 
