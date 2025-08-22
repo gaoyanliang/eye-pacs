@@ -1,0 +1,11 @@
+__pycache__/
+.idea/
+# Python 编译缓存
+./gylmodules/**/__pycache__/
+# macOS 系统文件
+.DS_Store
+./gylmodules/**/.DS_Store
+./gylmodules/workstation/.DS_Store
+# Python 虚拟环境
+.venv/
+scheduler_eye.lock
