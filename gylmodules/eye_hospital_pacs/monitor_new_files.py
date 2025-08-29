@@ -178,7 +178,7 @@ def monitor_directory():
             process_file_list = []
             for root, _, files in os.walk(SOURCE_DIR):
                 for filename in files:
-                    if str(filename).startswith('.'):
+                    if str(filename).startswith('.') or not str(filename).endswith('pdf'):
                         continue
                     src_path = os.path.join(root, filename)
                     rel_path = os.path.relpath(src_path, SOURCE_DIR)

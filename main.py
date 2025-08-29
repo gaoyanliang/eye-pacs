@@ -23,28 +23,8 @@ async_mode = "eventlet"
 socketio = SocketIO()
 socketio.init_app(server_app, cors_allowed_origins='*', async_mode=async_mode, subprocess=1000, threaded=True)
 
-
 def start_schedule_work():
-    # 如需修改任务，需关闭程序再重新启动
-    import atexit
-    import fcntl
-    lock_file = os.path.join(os.path.dirname(__file__), "scheduler_eye.lock")
-    try:
-        f = open(lock_file, "wb")
-        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError as e:
-        print(f"无法创建锁文件: {e}")
-        return
-    except:
-        print("无法获取文件锁，可能是另一实例正在运行")
-        return
-
-    def unlock():
-        fcntl.flock(f, fcntl.LOCK_UN)
-        f.close()
-
-    atexit.register(unlock)
-
+    print('启动所有定时器')
     gylschedule_task.schedule_task()
     time.sleep(3)  # 至少3秒 确保aaa被占用
 

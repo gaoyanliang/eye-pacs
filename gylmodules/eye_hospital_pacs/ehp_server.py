@@ -44,8 +44,9 @@ def create_medical_record(json_data):
                    json.dumps(item, default=str, ensure_ascii=False), datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
                   for item in json_data.get('data')]
 
-        insert_sql = """INSERT INTO nsyy_gyl.ehp_medical_record_detail (register_id, record_id, table_id, 
-                        table_name, table_value, create_time) VALUES (%s, %s, %s, %s, %s, %s)"""
+        insert_sql = """INSERT INTO nsyy_gyl.ehp_medical_record_detail (register_id, record_id, table_id,
+                                                                        table_name, table_value, create_time) \
+                        VALUES (%s, %s, %s, %s, %s, %s)"""
         last_row = db.execute_many(insert_sql, args=values, need_commit=True)
         if last_row == -1:
             del db
@@ -176,7 +177,7 @@ def bind_report(report_id, register_id, patient_id):
 def update_and_bind_report(file_name, file_path, register_id, patient_id):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
-    
+
     insert_sql = f"""INSERT INTO nsyy_gyl.ehp_reports (report_name, report_addr, report_time, 
     patient_id, register_id, report_machine) VALUES ('{file_name}', '{file_path}', 
     '{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', '{patient_id}', '{register_id}', '人工上传')"""
@@ -202,46 +203,67 @@ def place_on_file(patient_id, register_id, is_complete):
     del db
 
 
-
 """查询患者信息 / 当日挂号列表"""
 
 
-def query_patient_info(guahao_id, date_str):
+def query_patient_info(key, guahao_id, date_str):
     import cx_Oracle
     # 数据库连接配置（实际应用中应该从环境变量或配置文件中读取）
     db_config = {'user': 'ZLHIS', 'password': "DAE42", 'dsn': '192.168.190.254:1521/orcl'}
 
-    # 根据是否有挂号ID决定查询类型
-    if not guahao_id:
-        # 查询当日所有挂号记录
+    if key:
         sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
-        a.执行人 AS 医生姓名 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
-        WHERE TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') AND a.记录状态 = 1"""
+                a.执行人 AS 医生姓名, a.发生时间 as 就诊日期 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
+                join 病人信息 c on a.病人id = c.病人id WHERE a.记录状态 = 1 and (c.姓名 like '%{key}%' or 
+                c.身份证号 like '%{key}%' or c.家庭电话 like '%{key}%') order by a.发生时间 desc """
         params = {}
     else:
-        # 查询特定挂号ID的详细信息
-        sql = """
-        SELECT t.id 挂号ID, t.no, t.门诊号, t2.就诊卡号, t2.住院号 病案号, t.姓名, t.性别, 
-               t2.出生日期, t2.婚姻状况, t2.国籍, t2.民族, '身份证' 证件类型, 
-               t2.身份证号 证件号码, t2.家庭地址 现住址, t2.家庭电话 联系电话,
+        # 根据是否有挂号ID决定查询类型
+        if not guahao_id:
+            # 查询当日所有挂号记录
+            sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
+            a.执行人 AS 医生姓名, a.发生时间 as 就诊日期 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
+            WHERE TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') AND a.记录状态 = 1"""
+            params = {}
+        else:
+            # 查询特定挂号ID的详细信息
+            sql = """
+                  SELECT t.id                                                            挂号ID, \
+                         t.no, \
+                         t.门诊号, \
+                         t2.就诊卡号, \
+                         t2.住院号                                                       病案号, \
+                         t.姓名, \
+                         t.性别,
+                         t2.出生日期, \
+                         t2.婚姻状况, \
+                         t2.国籍, \
+                         t2.民族, \
+                         '身份证'                                                        证件类型,
+                         t2.身份证号                                                     证件号码, \
+                         t2.家庭地址                                                     现住址, \
+                         t2.家庭电话                                                     联系电话,
 
-               t.登记时间 挂号时间, t.登记时间 报道时间, t.执行时间 就诊时间, 
-               fy.执行部门 就诊科室, t.执行人, ry.专业技术职务 职称,
-               CASE WHEN fy.执行部门 LIKE '%急诊%' THEN '急诊' ELSE '门诊' END 就诊类型,
-               DECODE(t.复诊, 1, '是', '否') 是否复诊
-        FROM 病人挂号记录 t 
-        JOIN 病人信息 t2 ON t.病人id = t2.病人id
-        LEFT JOIN 人员表 ry ON ry.姓名 = t.执行人
-        LEFT JOIN (
-            SELECT t10.病人id, t10.no, t11.名称 执行部门 
-            FROM 门诊费用记录 t10
-            JOIN 部门表 t11 ON t10.执行部门id = t11.id 
-            WHERE 记录性质 = 4 AND 记录状态 = 1
-        ) fy ON t.病人id = fy.病人id AND t.no = fy.no
+                         t.登记时间                                                      挂号时间, \
+                         t.登记时间                                                      报道时间, \
+                         t.执行时间                                                      就诊时间,
+                         fy.执行部门                                                     就诊科室, \
+                         t.执行人, \
+                         ry.专业技术职务                                                 职称,
+                         CASE WHEN fy.执行部门 LIKE '%急诊%' THEN '急诊' ELSE '门诊' END 就诊类型,
+                         DECODE(t.复诊, 1, '是', '否')                                   是否复诊
+                  FROM 病人挂号记录 t
+                           JOIN 病人信息 t2 ON t.病人id = t2.病人id
+                           LEFT JOIN 人员表 ry ON ry.姓名 = t.执行人
+                           LEFT JOIN (SELECT t10.病人id, t10.no, t11.名称 执行部门 \
+                                      FROM 门诊费用记录 t10 \
+                                               JOIN 部门表 t11 ON t10.执行部门id = t11.id \
+                                      WHERE 记录性质 = 4 \
+                                        AND 记录状态 = 1) fy ON t.病人id = fy.病人id AND t.no = fy.no
 
-        WHERE t.id = :guahao_id
-        """
-        params = {'guahao_id': guahao_id}
+                  WHERE t.id = :guahao_id \
+                  """
+            params = {'guahao_id': guahao_id}
 
     try:
         # 建立数据库连接
