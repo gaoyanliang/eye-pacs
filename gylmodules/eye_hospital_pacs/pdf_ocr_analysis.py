@@ -317,8 +317,8 @@ def analysis_pdf(file_path):
     try:
         start_time = time.time()
         # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
-        jpg_paths = pdf_to_jpg(file_path)
-        print(datetime.now(), f'{file_path} 已转换为图片，数量 {len(jpg_paths)}, 耗时 {time.time() - start_time} 秒')
+        saved_jpgs = pdf_to_jpg(file_path)
+        print(datetime.now(), f'{file_path} 已转换为图片，数量 {len(saved_jpgs)}, 耗时 {time.time() - start_time} 秒')
         start_time = time.time()
 
         # 解析图片，识别患者姓名 & 提取数据
@@ -342,7 +342,7 @@ def analysis_pdf(file_path):
                     ocr_result = processor.ocr_image(np.array(roi))
                     all_texts = [item["text"] for item in ocr_result.get("data", [])]
                     joined_text = " ".join(all_texts)
-                    print(joined_text)
+                    # print(joined_text)
                     ret_str = ret_str + joined_text + '  '
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
@@ -378,7 +378,7 @@ def analysis_pdf(file_path):
                     ocr_result = processor.ocr_image(np.array(roi))
                     all_texts = [item["text"] for item in ocr_result.get("data", [])]
                     joined_text = " ".join(all_texts)
-                    print(joined_text)
+                    # print(joined_text)
                     ret_str = ret_str + joined_text + '  '
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
@@ -443,7 +443,7 @@ def analysis_pdf(file_path):
                     ocr_result = processor.ocr_image(np.array(roi))
                     all_texts = [item["text"] for item in ocr_result.get("data", [])]
                     joined_text = " ".join(all_texts)
-                    print(joined_text)
+                    # print(joined_text)
                     ret_str = ret_str + joined_text + '  '
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
@@ -454,31 +454,31 @@ def analysis_pdf(file_path):
                 # 1. 提取姓名（中文姓名）
                 name_match = re.search(r'^([\u4e00-\u9fa5]{2,4})', text)
                 if name_match:
-                    result["name"].append(name_match.group(1))
+                    result["name"] = name_match.group(1)
 
                 # 2. 提取平K值（多个）
                 flat_k_matches = re.findall(r'平K\s*([\d\.]+)', text)
                 if flat_k_matches:
-                    result['r_k1'] = flat_k_matches[0]
-                    result['l_k1'] = flat_k_matches[1] if len(flat_k_matches) > 1 else ''
+                    result['r_pk1'] = flat_k_matches[0]
+                    result['l_pk1'] = flat_k_matches[1] if len(flat_k_matches) > 1 else ''
 
                 # 3. 提取陡K值（多个）
                 steep_k_matches = re.findall(r'陡K\s*([\d\.]+)', text)
                 if steep_k_matches:
-                    result["r_k2"] = steep_k_matches[0]
-                    result["l_k2"] = steep_k_matches[1] if len(steep_k_matches) > 1 else ''
+                    result["r_xk2"] = steep_k_matches[0]
+                    result["l_xk2"] = steep_k_matches[1] if len(steep_k_matches) > 1 else ''
 
                 # 4. 提取平面e值（多个）
                 flat_e_matches = re.findall(r'平面e\s*([\d\.]+)', text)
                 if flat_k_matches:
-                    result["r_e"] = flat_e_matches[0]
-                    result["l_e"] = flat_e_matches[1] if len(flat_e_matches) > 1 else ''
+                    result["r_pe"] = flat_e_matches[0]
+                    result["l_pe"] = flat_e_matches[1] if len(flat_e_matches) > 1 else ''
 
                 return result
 
             result = extract_corneal_data(ret_str)
 
-        delete_files(jpg_paths)
+        delete_files(saved_jpgs)
         return result.get('name', ''), result
     except Exception as e:
         print(datetime.now(), f"解析文件 {file_path} 失败: {e}")

@@ -104,7 +104,7 @@ def process_file(src_rel_path, retry_count=0):
         # 分离文件名和扩展名
         dirname, filename = os.path.split(src_rel_path)
         basename, ext = os.path.splitext(filename)
-        date_str = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        date_str = datetime.now().strftime("%Y%m%d%H%M%S")
         machine = '未收录设备'
         if str(ext).lower().__contains__('pdf'):
             if basename.startswith("202"):

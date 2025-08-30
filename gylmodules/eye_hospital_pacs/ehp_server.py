@@ -5,12 +5,10 @@ from gylmodules import global_config, global_tools
 from gylmodules.utils.db_utils import DbUtil
 
 
+"""创建病历"""
+
+
 def create_medical_record(json_data):
-    """
-    创建病历
-    :param json_data:
-    :return:
-    """
     record_data = {}
     record_id = json_data.get('record_id')
 
@@ -56,12 +54,10 @@ def create_medical_record(json_data):
         raise Exception("新增病历异常! ", e)
 
 
+"""更新创建过的tab表单"""
+
+
 def update_medical_record_detail(json_data):
-    """
-    更新创建过的tab表单
-    :param json_data:
-    :return:
-    """
     record_detail_id = json_data.get('record_detail_id')
     table_value = json_data.get('table_value')
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
@@ -76,12 +72,10 @@ def update_medical_record_detail(json_data):
         raise Exception("新增/更新病历异常! ", e)
 
 
+"""查询病历列表"""
+
+
 def query_medical_list(register_id):
-    """
-    查询病历列表
-    :param register_id:
-    :return:
-    """
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
 
@@ -115,12 +109,10 @@ def query_medical_list(register_id):
     return list(merged.values())
 
 
+"""查询病历详情"""
+
+
 def query_medical_record(record_detail_id):
-    """
-    查询病历详情
-    :param record_detail_id:
-    :return:
-    """
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     record_data = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_medical_record_detail WHERE id = {record_detail_id}")
@@ -140,18 +132,21 @@ def get_birthday_from_id(id_number):
         return ''
 
 
+"""查询报告列表"""
+
 def query_report_list(register_id):
-    """
-    查询报告列表
-    :param register_id: 病人挂号id
-    :return:
-    """
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     report_list = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_reports "
                                f"WHERE register_id = '{register_id}' or register_id is null or register_id = '' ")
     del db
-    return report_list
+
+    merged_dict = {}
+    for report in report_list:
+        if report.get('register_id') and report.get("report_value"):
+            report_value = json.loads(report.pop('report_value'))
+            merged_dict = {**merged_dict, **report_value}
+    return {"report_list": report_list, "merged_dict": merged_dict}
 
 
 def bind_report(report_id, register_id, patient_id):
