@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from gylmodules import global_config, global_tools
+from gylmodules.eye_hospital_pacs import ehp_config
 from gylmodules.utils.db_utils import DbUtil
 
 
@@ -146,7 +147,43 @@ def query_report_list(register_id):
         if report.get('register_id') and report.get("report_value"):
             report_value = json.loads(report.pop('report_value'))
             merged_dict = {**merged_dict, **report_value}
-    return {"report_list": report_list, "merged_dict": merged_dict}
+
+    return {"report_list": report_list,
+            "手术安全核查表": ehp_config.verification_form,
+            "屈光手术风险评估": ehp_config.risk_assessment,
+            "术前眼部检查": {
+                            "corneal_thick": {
+                                "od": merged_dict.get('r_thinnest_point', ''),
+                                "os": merged_dict.get('l_thinnest_point', '')
+                            },
+                            "curvature_radius": {
+                                "od": merged_dict.get('r_rm', ''),
+                                "os": merged_dict.get('l_rm', ''),
+                            },
+                            "corneal_curvature": {
+                                "k1_od": merged_dict.get('r_k1', ''),
+                                "k1_os": merged_dict.get('l_k1', ''),
+                                "k2_od": merged_dict.get('r_k2', ''),
+                                "k2_os": merged_dict.get('l_k2', ''),
+                            }
+                        },
+            "硬性角膜接触镜验配病历": {
+                                    "corneal_para": {
+                                        "inner_od": merged_dict.get('r_cd', ''),
+                                        "inner_os": merged_dict.get('l_cd', ''),
+                                        "evalue_od": merged_dict.get('r_pe', ''),
+                                        "evalue_os": merged_dict.get('l_pe', ''),
+                                        "diameter_od": "",
+                                        "diameter_os": "",
+                                        "thickness_od": "",
+                                        "thickness_os": "",
+                                        "curvature_k1_od": merged_dict.get('r_pk1', ''),
+                                        "curvature_k1_os": merged_dict.get('l_pk1', ''),
+                                        "curvature_k2_od": merged_dict.get('r_xk2', ''),
+                                        "curvature_k2_os": merged_dict.get('l_xk2', ''),
+                                    }
+                                }
+            }
 
 
 def bind_report(report_id, register_id, patient_id):
