@@ -5,7 +5,6 @@ from gylmodules import global_config, global_tools
 from gylmodules.eye_hospital_pacs import ehp_config
 from gylmodules.utils.db_utils import DbUtil
 
-
 """创建病历"""
 
 
@@ -135,6 +134,7 @@ def get_birthday_from_id(id_number):
 
 """查询报告列表"""
 
+
 def query_report_list(register_id):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
@@ -152,37 +152,53 @@ def query_report_list(register_id):
             "手术安全核查表": ehp_config.verification_form,
             "屈光手术风险评估": ehp_config.risk_assessment,
             "术前眼部检查": {
-                            "corneal_thick": {
-                                "od": merged_dict.get('r_thinnest_point', ''),
-                                "os": merged_dict.get('l_thinnest_point', '')
-                            },
-                            "curvature_radius": {
-                                "od": merged_dict.get('r_rm', ''),
-                                "os": merged_dict.get('l_rm', ''),
-                            },
-                            "corneal_curvature": {
-                                "k1_od": merged_dict.get('r_k1', ''),
-                                "k1_os": merged_dict.get('l_k1', ''),
-                                "k2_od": merged_dict.get('r_k2', ''),
-                                "k2_os": merged_dict.get('l_k2', ''),
-                            }
-                        },
+                "corneal_thick": {
+                    "od": merged_dict.get('r_thinnest_point', ''),
+                    "os": merged_dict.get('l_thinnest_point', '')
+                },
+                "curvature_radius": {
+                    "od": merged_dict.get('r_rm', ''),
+                    "os": merged_dict.get('l_rm', ''),
+                },
+                "corneal_curvature": {
+                    "k1_od": merged_dict.get('r_k1', ''),
+                    "k1_os": merged_dict.get('l_k1', ''),
+                    "k2_od": merged_dict.get('r_k2', ''),
+                    "k2_os": merged_dict.get('l_k2', ''),
+                }
+            },
             "硬性角膜接触镜验配病历": {
-                                    "corneal_para": {
-                                        "inner_od": merged_dict.get('r_cd', ''),
-                                        "inner_os": merged_dict.get('l_cd', ''),
-                                        "evalue_od": merged_dict.get('r_pe', ''),
-                                        "evalue_os": merged_dict.get('l_pe', ''),
-                                        "diameter_od": "",
-                                        "diameter_os": "",
-                                        "thickness_od": "",
-                                        "thickness_os": "",
-                                        "curvature_k1_od": merged_dict.get('r_pk1', ''),
-                                        "curvature_k1_os": merged_dict.get('l_pk1', ''),
-                                        "curvature_k2_od": merged_dict.get('r_xk2', ''),
-                                        "curvature_k2_os": merged_dict.get('l_xk2', ''),
-                                    }
-                                }
+                "corneal_para": {
+                    "inner_od": merged_dict.get('r_cd', ''),
+                    "inner_os": merged_dict.get('l_cd', ''),
+                    "evalue_od": merged_dict.get('r_pe', ''),
+                    "evalue_os": merged_dict.get('l_pe', ''),
+                    "diameter_od": "",
+                    "diameter_os": "",
+                    "thickness_od": "",
+                    "thickness_os": "",
+                    "curvature_k1_od": merged_dict.get('r_pk1', ''),
+                    "curvature_k1_os": merged_dict.get('l_pk1', ''),
+                    "curvature_k2_od": merged_dict.get('r_xk2', ''),
+                    "curvature_k2_os": merged_dict.get('l_xk2', ''),
+                }
+            },
+            "TransPRK/FS_LASIK手术记录": {
+                "corneal_curvate_od": "1",
+                "corneal_curvate_os": "2",
+                "diopter_od": "3",
+                "diopter_os": "4",
+                "corneal_thick_od": "5",
+                "corneal_thick_os": "6",
+                "flap_thick_od": "7",
+                "flap_thick_os": "8",
+                "light_area_od": "9",
+                "light_area_os": "10",
+                "cut_depth_od": "11",
+                "cut_depth_os": "12",
+                "cut_time_od": "13",
+                "cut_time_os": "14"
+            }
             }
 
 
