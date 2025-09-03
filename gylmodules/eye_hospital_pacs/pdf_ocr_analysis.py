@@ -311,7 +311,8 @@ def analysis_pdf(file_path):
     file_name = os.path.basename(file_path)
     if not file_path.endswith(".pdf") and not (str(file_name).startswith("角膜内皮细胞报告")
                                                or str(file_name).startswith("屈光四图")
-                                               or str(file_name).startswith("bi_qianxi")
+                                               or str(file_name).startswith("OD")
+                                               or str(file_name).startswith("OS")
                                                or str(file_name).startswith("角膜地形图")):
         return None, {}
 
@@ -479,7 +480,7 @@ def analysis_pdf(file_path):
 
             result = extract_corneal_data(ret_str)
 
-        elif str(file_name).startswith("bi_qianxi"):
+        elif str(file_name).__contains__("OD") or str(file_name).__contains__("OS"):
             img = Image.open(saved_jpgs[0])
             regions = [
                 (300, 940, 1200, 1100),
