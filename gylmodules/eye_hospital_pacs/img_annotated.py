@@ -156,6 +156,10 @@ pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医�
 
 pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/塑形镜验配图.pdf"
 
+
+pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
+
+
 output_directory = "."  # 替换为你的输出目录
 saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
 print("转换完成的 JPG 文件完整路径:")
@@ -178,10 +182,23 @@ for path in saved_jpgs:
 
 
 # 塑形镜验配图
-coordinates = [[50, 150], [1100, 150], [1100, 300], [50, 300]]  # 顶部患者信息
+# coordinates = [[50, 150], [1100, 150], [1100, 300], [50, 300]]  # 顶部患者信息
 # coordinates = [[50, 1600], [1100, 1600], [1100, 2000], [50, 2000]]  # 左侧
 # coordinates = [[1750, 1600], [2800, 1600], [2800, 2000], [1750, 2000]]  # 右侧
 
+
+# 阿玛仕 全激光 设备报告
+# 角膜曲率 k1  k2
+coordinates = [[300, 940], [1200, 940], [1200, 1100], [300, 1100]]
+# 屈光度
+coordinates = [[400, 1350], [1600, 1350], [1600, 1450], [400, 1450]]
+
+# # 切削时间
+# coordinates = [[300, 1555], [1200, 1555], [1200, 1625], [300, 1625]]
+# # 光区
+# coordinates = [[1425, 700], [2380, 700], [2380, 780], [1425, 780]]
+# # 切削深度
+# coordinates = [[1425, 940], [2380, 940], [2380, 1020], [1425, 1020]]
 
 annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
 
@@ -217,10 +234,10 @@ def process_pdf_with_orientation(pdf_path):
     return crop_box, orientation
 
 
-# 使用示例
-crop_box, orientation = process_pdf_with_orientation(saved_jpgs[0])
-
-print(f"使用裁剪框: {crop_box}")
-print(f"页面方向: {orientation}")
+# # 使用示例
+# crop_box, orientation = process_pdf_with_orientation(saved_jpgs[0])
+#
+# print(f"使用裁剪框: {crop_box}")
+# print(f"页面方向: {orientation}")
 
 

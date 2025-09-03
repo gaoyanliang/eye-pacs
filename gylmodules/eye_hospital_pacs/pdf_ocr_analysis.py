@@ -311,6 +311,7 @@ def analysis_pdf(file_path):
     file_name = os.path.basename(file_path)
     if not file_path.endswith(".pdf") and not (str(file_name).startswith("角膜内皮细胞报告")
                                                or str(file_name).startswith("屈光四图")
+                                               or str(file_name).startswith("bi_qianxi")
                                                or str(file_name).startswith("角膜地形图")):
         return None, {}
 
@@ -478,6 +479,51 @@ def analysis_pdf(file_path):
 
             result = extract_corneal_data(ret_str)
 
+        elif str(file_name).startswith("bi_qianxi"):
+            img = Image.open(saved_jpgs[0])
+            regions = [
+                (300, 940, 1200, 1100),
+                (400, 1350, 1600, 1450),
+                (300, 1555, 1200, 1625),
+                (1425, 700, 2380, 780),
+                (1425, 940, 2380, 1020),
+            ]
+            ret_str = ""
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    joined_text = " ".join(all_texts)
+                    # print(joined_text)
+                    ret_str = ret_str + joined_text + '  '
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+
+            def extract_corneal_data(text: str) -> Dict[str, List[str]]:
+                """从阿玛仕手术报告文本中提取关键信息"""
+                result = {}
+                eye_type = 'od' if str(file_name).__contains__('OD') else 'os'
+                # 角膜曲率
+                d_match = re.findall(r"(\d+,\d+)\s+D", text)
+                if d_match:
+                    d_match = d_match[:2]
+                    d_match = ",".join(d_match)
+                result[f'corneal_curvate_{eye_type}'] = d_match if d_match else ''
+
+                # 屈光度
+                name_match = re.search(r"(-?\d+,\d+\s+D\s+-?\d+,\d+\s+Dx\s*\d+)", text)
+                result[f"diopter_{eye_type}"] = name_match.group(1) if name_match else ''
+                result[f"light_area_{eye_type}"] = re.search(r"(\d+,\d+\s+mm)", text).group(1) if re.search(r"(\d+,\d+\s+mm)", text) else ''
+                result[f"cut_depth_{eye_type}"] = re.search(r"(\d+\s+um)", text).group(1) if re.search(r"(\d+\s+um)", text) else ''
+                result[f"cut_time_{eye_type}"]  = re.search(r"(\d+\s+s)", text).group(1) if re.search(r"(\d+\s+s)", text) else ''
+                result['name'] = ''
+                return result
+
+            result = extract_corneal_data(ret_str)
+
         delete_files(saved_jpgs)
         return result.get('name', ''), result
     except Exception as e:
@@ -514,7 +560,7 @@ def regularly_parsing_eye_report():
 if __name__ == "__main__":
     start_time = time.time()
 
-    pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/4.pdf"
+    # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/4.pdf"
     # # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/5.pdf"
     # patient_name, values = analysis_pdf(pdf_file)
     #
@@ -527,8 +573,9 @@ if __name__ == "__main__":
     # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/205-北 眼前节测量评估系统/ODpentacam四图.pdf"  # 替换为你的 PDF 文件路径
     # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/204角膜地形图仪/干眼检查报告1.pdf"  # 替换为你的 PDF 文件路径
 
-    pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/塑形镜验配图.pdf"
+    # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/塑形镜验配图.pdf"
     # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/202角膜内皮显微镜/202 角膜内皮细胞报告.pdf"
+    pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
     output_directory = "."  # 替换为你的输出目录
     saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
     print("转换完成的 JPG 文件完整路径:")
@@ -552,9 +599,11 @@ if __name__ == "__main__":
     img = Image.open(saved_jpgs[0])
 
     regions = [
-        (50, 150, 1100, 300),
-        (50, 1600, 1100, 2000),
-        (1750, 1600, 2800, 2000),
+        (300, 940, 1200, 1100),
+        (400, 1350, 1600, 1450),
+        (300, 1555, 1200, 1625),
+        (1425, 700, 2380, 780),
+        (1425, 940, 2380, 1020),
     ]
     ret_str = ''
     for region in regions:
