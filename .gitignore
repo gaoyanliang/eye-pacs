@@ -9,3 +9,5 @@ __pycache__/
 # Python 虚拟环境
 .venv/
 scheduler_eye.lock
+./gylmodules/eye_hospital_pacs/1/
+./gylmodules/eye_hospital_pacs/2/

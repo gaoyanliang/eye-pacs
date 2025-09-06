@@ -119,6 +119,7 @@ class OCRProcessor:
                         # 模型选择（平衡速度与精度）
                         det_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_det_infer/',
                         rec_model_dir='/home/nsyy/eye-pacs/inference/ch_PP-OCRv4_rec_infer/',
+                        rec_char_dict_path='/home/nsyy/eye-pacs/inference/ppocr_keys_v1.txt',
                         cls_model_dir=None,  # 禁用方向分类（PDF通常方向固定）
 
                         # ===== 性能优化 =====
@@ -320,7 +321,7 @@ def analysis_pdf(file_path):
         start_time = time.time()
         # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
         saved_jpgs = pdf_to_jpg(file_path)
-        print(datetime.now(), f'{file_path} 已转换为图片，数量 {len(saved_jpgs)}, 耗时 {time.time() - start_time} 秒')
+        # print(datetime.now(), f'{file_path} 已转换为图片，数量 {len(saved_jpgs)}, 耗时 {time.time() - start_time} 秒')
         start_time = time.time()
 
         # 解析图片，识别患者姓名 & 提取数据
@@ -526,6 +527,7 @@ def analysis_pdf(file_path):
             result = extract_corneal_data(ret_str)
 
         delete_files(saved_jpgs)
+        print(datetime.now(), f"{file_path} 解析成功")
         return result.get('name', ''), result
     except Exception as e:
         print(datetime.now(), f"解析文件 {file_path} 失败: {e}")
@@ -536,16 +538,18 @@ def regularly_parsing_eye_report():
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     report_list = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_reports "
-                               f"WHERE report_value is null ORDER BY report_time limit 5")
+                               f"WHERE report_value is null and report_machine != '蔡司Master700' ORDER BY report_time limit 5")
 
     try:
         value_list = []
         for report in report_list:
             file_path = report.get('report_addr').replace('&', '/')
-            if not os.path.exists(file_path) and not str(file_path).endswith(".pdf"):
+            if not os.path.exists(file_path) and not str(file_path).endswith(".pdf") :
                 continue
 
             patient_name, values = analysis_pdf(file_path)
+            if not values:
+                values = {"res": "analysis failed"}
 
             report_name = f"{patient_name}_{report.get('report_name')}" if patient_name else report.get('report_name')
             report_value = json.dumps(values, ensure_ascii=False, default=str) if values else ''
