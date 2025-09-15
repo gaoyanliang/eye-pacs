@@ -30,11 +30,11 @@ def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "out
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        if global_config.run_in_local:
-            poppler_path = "/opt/homebrew/bin"  # 确保与 pdftoppm 路径一致\
-            images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg', poppler_path=poppler_path)
-        else:
-            images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg')
+        # if global_config.run_in_local:
+        #     poppler_path = "/opt/homebrew/bin"  # 确保与 pdftoppm 路径一致\
+        #     images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg', poppler_path=poppler_path)
+        # else:
+        images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg')
     except Exception as e:
         print(datetime.now(), f"ERROR {pdf_path} PDF 转换失败: {e}")
         return []
@@ -100,9 +100,9 @@ class OCRProcessor:
                 if global_config.run_in_local:
                     self._ocr_engine = PaddleOCR(lang='ch', use_angle_cls=False,
                                                  use_gpu=False, enable_mkldnn=False, show_log=False,
-                                                 det_model_dir='/Users/gaoyanliang/nsyy/eye-pacs/gylmodules/eye_hospital_pacs/inference/ch_ppocr_server_v2.0_det_infer/',
-                                                 rec_model_dir='/Users/gaoyanliang/nsyy/eye-pacs/gylmodules/eye_hospital_pacs/inference/ch_ppocr_server_v2.0_rec_infer/',
-                                                 rec_char_dict_path='/Users/gaoyanliang/nsyy/eye-pacs/gylmodules/eye_hospital_pacs/inference/ppocr_keys_v1.txt',
+                                                 det_model_dir='./inference/ch_ppocr_server_v2.0_det_infer/',
+                                                 rec_model_dir='./inference/ch_ppocr_server_v2.0_rec_infer/',
+                                                 rec_char_dict_path='./inference/ppocr_keys_v1.txt',
                                                  cls_model_dir=None  # 显式禁用分类模型
                                                  )
                 else:
@@ -301,6 +301,57 @@ class OCRProcessor:
         return merged
 
 
+def get_pdf_orientation(pdf_path):
+    """
+    判断PDF页面方向
+    :param pdf_path: PDF文件路径
+    :return: 'portrait'(竖版), 'landscape'(横版), 'square'(正方形)
+    """
+    try:
+        # 方法1: 使用PyPDF2
+        import PyPDF2
+        with open(pdf_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            if len(reader.pages) > 0:
+                page = reader.pages[0]
+                width = float(page.mediabox.width)
+                height = float(page.mediabox.height)
+
+                # 计算宽高比
+                ratio = width / height
+                if ratio > 1.2:  # 宽明显大于高
+                    return 'landscape'
+                elif ratio < 0.8:  # 高明显大于宽
+                    return 'portrait'
+                else:
+                    return 'square'
+
+    except Exception as e:
+        print(f"PyPDF2读取失败: {e}")
+        try:
+            import fitz  # PyMuPDF
+            # 方法2: 使用PyMuPDF (更可靠)
+            doc = fitz.open(pdf_path)
+            if len(doc) > 0:
+                page = doc[0]
+                rect = page.rect
+                width = rect.width
+                height = rect.height
+
+                ratio = width / height
+                if ratio > 1.2:
+                    return 'landscape'
+                elif ratio < 0.8:
+                    return 'portrait'
+                else:
+                    return 'square'
+            doc.close()
+
+        except Exception as e2:
+            print(f"PyMuPDF读取失败: {e2}")
+
+    return 'unknown'
+
 
 def analysis_pdf(file_path):
     """
@@ -365,13 +416,22 @@ def analysis_pdf(file_path):
 
             result = extract_name_and_cd(ret_str)
 
-        elif str(file_name).startswith("屈光四图"):
+        elif str(file_name).startswith("屈光四图") or ((str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and str(file_name).__contains__("4 Maps Refr")):
+            orientation = get_pdf_orientation(saved_jpgs[0])
+            if orientation == 'portrait':
+                regions = [
+                    (50, 1150, 700, 1450),
+                    (60, 1450, 700, 1710),
+                    (60, 2250, 700, 2500),
+                ]
+            else:
+                regions = [
+                    (280, 500, 1080, 860),
+                    (290, 890, 1080, 1350),
+                    (290, 1800, 1080, 2150),
+                ]
+
             img = Image.open(saved_jpgs[0])
-            regions = [
-                (50, 1150, 700, 1450),
-                (60, 1450, 700, 1710),
-                (60, 2250, 700, 2500),
-            ]
             ret_str = ""
             for region in regions:
                 left, top, right, bottom = region
@@ -406,22 +466,22 @@ def analysis_pdf(file_path):
                 eye = 'l_' if result["eye"] == '左眼' else 'r_'
 
                 # 4. 提取K1值（字符串格式）
-                k1_match = re.search(r'K1[：:\s]*([\d\.]+)\s*D?', text)
+                k1_match = re.search(r'K1[。.：:\s]*([\d\.]+)\s*D?', text)
                 if k1_match:
                     result[f"{eye}k1"] = k1_match.group(1)
 
                 # 5. 提取K2值（字符串格式）
-                k2_match = re.search(r'K2[：:\s]*([\d\.]+)\s*D?', text)
+                k2_match = re.search(r'K2[。.：:\s]*([\d\.]+)\s*D?', text)
                 if k2_match:
                     result[f"{eye}k2"] = k2_match.group(1)
 
                 # 6. 提取RM值（字符串格式）
-                rm_match = re.search(r'Rm[：:\s]*([\d\.]+)\s*毫?米?', text)
+                rm_match = re.search(r'Rm[。.：:\s]*([\d\.]+)\s*毫?米?', text)
                 if rm_match:
                     result[f"{eye}rm"] = rm_match.group(1)
 
                 # 7. 提取最薄点位置（字符串格式）
-                thinnest_match = re.search(r'最薄点位置[：:\s]*(\d+)\s*微?米?', text)
+                thinnest_match = re.search(r'最薄点位置[。.：:\s]*(\d+)\s*微?米?', text)
                 if thinnest_match:
                     result[f"{eye}thinnest_point"] = thinnest_match.group(1)
 
@@ -481,7 +541,8 @@ def analysis_pdf(file_path):
 
             result = extract_corneal_data(ret_str)
 
-        elif str(file_name).__contains__("OD") or str(file_name).__contains__("OS"):
+        elif (str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and not str(file_name).__contains__("Maps Refr"):
+            # 阿玛仕手术报告
             img = Image.open(saved_jpgs[0])
             regions = [
                 (300, 940, 1200, 1100),
@@ -564,6 +625,10 @@ def regularly_parsing_eye_report():
 # macOS环境检测
 if __name__ == "__main__":
     start_time = time.time()
+    file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
+    patient_name, values = analysis_pdf(file_path)
+    print(patient_name)
+    print(values)
 
     # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/4.pdf"
     # # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/5.pdf"
@@ -580,93 +645,54 @@ if __name__ == "__main__":
 
     # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/塑形镜验配图.pdf"
     # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/202角膜内皮显微镜/202 角膜内皮细胞报告.pdf"
-    pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
-    output_directory = "."  # 替换为你的输出目录
-    saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
-    print("转换完成的 JPG 文件完整路径:")
-    for path in saved_jpgs:
-        print(path)
-
-    print("PDF 转换 JPG 完成，耗时:", round(time.time() - start_time, 2), "秒")
-
-    # 使用示例
-    processor = OCRProcessor()
-
-    # 示例1: 识别PNG截图（处理透明背景）
-    # result = processor.ocr_image(r"/Users/gaoyanliang/Downloads/L角膜OCT.jpg", merge_level=2)
-    # result = processor.ocr_image(saved_jpgs[0], merge_level=2)
-
-    # # 示例2: 识别PDF转换的图片
-    # with open(saved_jpgs[0], "rb") as f:
-    #     result = processor.ocr_image(f.read(), language='en')
-
-    # 方式3 按坐标解析
-    img = Image.open(saved_jpgs[0])
-
-    regions = [
-        (300, 940, 1200, 1100),
-        (400, 1350, 1600, 1450),
-        (300, 1555, 1200, 1625),
-        (1425, 700, 2380, 780),
-        (1425, 940, 2380, 1020),
-    ]
-    ret_str = ''
-    for region in regions:
-        left, top, right, bottom = region
-        crop_box = (left, top, right, bottom)
-        try:
-            # 裁剪感兴趣区域
-            roi = img.crop(crop_box)
-            # OCR识别
-            ocr_result = processor.ocr_image(np.array(roi))
-
-            all_texts = [item["text"] for item in ocr_result.get("data", [])]
-            joined_text = " ".join(all_texts)
-            ret_str = ret_str + joined_text +  "  "
-
-        except Exception as e:
-            print(e)
-
-    print(ret_str)
-
-    # # 假设你的感兴趣区域是这段
-    # # crop_box = (60, 1160, 700, 1440)  # (left, top, right, bottom)
-    # # crop_box = (60, 1600, 1100, 2000)  # (left, top, right, bottom)
-    # # crop_box = (1750, 1600, 2800, 2000)  # (left, top, right, bottom)
-    # crop_box = (50, 140, 1000, 280)  # (left, top, right, bottom)
-    # roi = img.crop(crop_box)
-    # # 转成 numpy 数组再 OCR
-    # result = processor.ocr_image(np.array(roi))
-
-    # ====== 屈光四图
-    # for item in result.get("data", []):
-    #     print(f"{item['text']}")
+    # pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
+    # output_directory = "."  # 替换为你的输出目录
+    # saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
+    # print("转换完成的 JPG 文件完整路径:")
+    # for path in saved_jpgs:
+    #     print(path)
     #
-    #     if extract_name_from_text(item['text']):
-    #         print('=========== Name: ', extract_name_from_text(item['text']))
-    #     print(f"位置坐标:  {item['position']}")
-    #     print()
-    #     print()
-
-
-    # all_texts = [item["text"] for item in result.get("data", [])]
-    # joined_text = " ".join(all_texts)
-    # print(joined_text)
-    # fields = extract_quguang(joined_text)
-    # print(fields)
+    # print("PDF 转换 JPG 完成，耗时:", round(time.time() - start_time, 2), "秒")
     #
-    # all_texts = [item["text"] for item in result.get("data", [])]
-    # joined_text = " ".join(all_texts)
-    # joined_text = joined_text.replace('\n', ' ')
-    # print('完整输出: ', joined_text)
-    # print("姓名", extract_surname_givenname(joined_text))
-    # print(extract_name_from_text(joined_text))
+    # # 使用示例
+    # processor = OCRProcessor()
     #
-    # fields = extract_k_values(joined_text)
-    # print(fields)
+    # # 示例1: 识别PNG截图（处理透明背景）
+    # # result = processor.ocr_image(r"/Users/gaoyanliang/Downloads/L角膜OCT.jpg", merge_level=2)
+    # # result = processor.ocr_image(saved_jpgs[0], merge_level=2)
     #
-    # result = extract_k_values_from_text(joined_text)
-    # print(result)
+    # # # 示例2: 识别PDF转换的图片
+    # # with open(saved_jpgs[0], "rb") as f:
+    # #     result = processor.ocr_image(f.read(), language='en')
     #
-    print("识别完成，耗时:", round(time.time() - start_time, 2), "秒")
+    # # 方式3 按坐标解析
+    # img = Image.open(saved_jpgs[0])
+    #
+    # regions = [
+    #     (300, 940, 1200, 1100),
+    #     (400, 1350, 1600, 1450),
+    #     (300, 1555, 1200, 1625),
+    #     (1425, 700, 2380, 780),
+    #     (1425, 940, 2380, 1020),
+    # ]
+    # ret_str = ''
+    # for region in regions:
+    #     left, top, right, bottom = region
+    #     crop_box = (left, top, right, bottom)
+    #     try:
+    #         # 裁剪感兴趣区域
+    #         roi = img.crop(crop_box)
+    #         # OCR识别
+    #         ocr_result = processor.ocr_image(np.array(roi))
+    #
+    #         all_texts = [item["text"] for item in ocr_result.get("data", [])]
+    #         joined_text = " ".join(all_texts)
+    #         ret_str = ret_str + joined_text +  "  "
+    #
+    #     except Exception as e:
+    #         print(e)
+    #
+    # print(ret_str)
+    #
+    # print("识别完成，耗时:", round(time.time() - start_time, 2), "秒")
     # # delete_files(saved_jpgs)

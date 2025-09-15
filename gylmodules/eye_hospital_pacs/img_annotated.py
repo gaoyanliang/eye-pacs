@@ -43,11 +43,11 @@ def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "out
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        if global_config.run_in_local:
-            poppler_path = "/opt/homebrew/bin"  # 确保与 pdftoppm 路径一致\
-            images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg', poppler_path=poppler_path)
-        else:
-            images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg')
+        # if global_config.run_in_local:
+        #     poppler_path = "/opt/homebrew/bin"  # 确保与 pdftoppm 路径一致\
+        #     images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg', poppler_path=poppler_path)
+        # else:
+        images = convert_from_path(pdf_path, dpi=dpi, fmt='jpg')
     except Exception as e:
         print(datetime.now(), f"ERROR {pdf_path} PDF 转换失败: {e}")
         return []
@@ -146,18 +146,21 @@ def get_pdf_page_size(pdf_path):
 
 
 
-pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/204角膜地形图仪/干眼检查报告1.pdf"  # 替换为你的 PDF 文件路径
+# pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/204角膜地形图仪/干眼检查报告1.pdf"  # 替换为你的 PDF 文件路径
+#
+# pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/201视光角膜地形图/201视光角膜地形图.pdf"
+#
+#
+# pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/202角膜内皮显微镜/202 角膜内皮细胞报告.pdf"
+# pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/4.pdf"
+#
+# pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/塑形镜验配图.pdf"
+#
+#
+# pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
 
-pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/201视光角膜地形图/201视光角膜地形图.pdf"
 
-
-pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/202角膜内皮显微镜/202 角膜内皮细胞报告.pdf"
-pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/4.pdf"
-
-pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/塑形镜验配图.pdf"
-
-
-pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
+pdf_file = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OS_11092025_110222_4 Maps Refr_20250911161528.pdf"
 
 
 output_directory = "."  # 替换为你的输出目录
@@ -173,6 +176,10 @@ for path in saved_jpgs:
 # coordinates = [[60, 1450], [700, 1450], [700, 1710], [60, 1710]]  # 左侧 角膜前表面
 # coordinates = [[60, 1600], [1100, 1600], [1100, 2000], [60, 2000]]  # 左侧 角膜后表面
 # coordinates = [[60, 2250], [700, 2250], [700, 2500], [60, 2500]]  # 左侧 最薄点位置
+# 使用示例 屈光四图  横版
+coordinates = [[280, 500], [1080, 500], [1080, 860], [280, 860]]  # 左上角 患者信息
+coordinates = [[290, 890], [1080, 890], [1080, 1350], [290, 1350]]  # 左侧 角膜前表面
+coordinates = [[290, 1800], [1080, 1800], [1080, 2150], [290, 2150]]  # 左侧 最薄点位置
 
 
 # 角膜内皮细胞报告
@@ -189,9 +196,9 @@ for path in saved_jpgs:
 
 # 阿玛仕 全激光 设备报告
 # 角膜曲率 k1  k2
-coordinates = [[300, 940], [1200, 940], [1200, 1100], [300, 1100]]
-# 屈光度
-coordinates = [[400, 1350], [1600, 1350], [1600, 1450], [400, 1450]]
+# coordinates = [[300, 940], [1200, 940], [1200, 1100], [300, 1100]]
+# # 屈光度
+# coordinates = [[400, 1350], [1600, 1350], [1600, 1450], [400, 1450]]
 
 # # 切削时间
 # coordinates = [[300, 1555], [1200, 1555], [1200, 1625], [300, 1625]]
@@ -200,7 +207,7 @@ coordinates = [[400, 1350], [1600, 1350], [1600, 1450], [400, 1450]]
 # # 切削深度
 # coordinates = [[1425, 940], [2380, 940], [2380, 1020], [1425, 1020]]
 
-annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
+# annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
 
 
 def process_pdf_with_orientation(pdf_path):
@@ -234,10 +241,33 @@ def process_pdf_with_orientation(pdf_path):
     return crop_box, orientation
 
 
-# # 使用示例
+# 使用示例
 # crop_box, orientation = process_pdf_with_orientation(saved_jpgs[0])
 #
 # print(f"使用裁剪框: {crop_box}")
 # print(f"页面方向: {orientation}")
 
+
+
+
+file_name = os.path.basename("/home/nsyy/eye_hospital_pacs/Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf")
+print(file_name)
+
+if str(file_name).startswith("角膜内皮细胞报告"):
+    print('角膜内皮细胞报告')
+
+elif str(file_name).startswith("屈光四图") or (
+        (str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and str(file_name).__contains__(
+        "4 Maps Refr")):
+    print('屈光四图')
+
+elif str(file_name).startswith("角膜地形图"):
+    print('角膜地形图')
+
+elif (str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and not str(file_name).__contains__(
+        "Maps Refr"):
+    # 阿玛仕手术报告
+    print('阿玛仕手术报告')
+else:
+    print('----')
 

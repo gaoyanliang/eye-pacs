@@ -119,7 +119,7 @@ def process_file(src_rel_path, retry_count=0):
             elif filename.startswith("205."):
                 basename = "生物力学"
                 machine = "非接触式眼压计"
-            elif filename.startswith("4."):
+            elif filename.startswith("4.") or filename.__contains__("4 Maps Refr"):
                 basename = "屈光四图"
                 machine = "眼前节分析仪"
             elif filename.startswith("5."):
