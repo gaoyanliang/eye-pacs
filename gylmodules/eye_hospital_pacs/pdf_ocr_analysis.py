@@ -16,6 +16,7 @@ import cv2
 from typing import Optional
 
 from gylmodules import global_config
+from gylmodules.eye_hospital_pacs import ehp_server
 from gylmodules.utils.db_utils import DbUtil
 
 
@@ -353,6 +354,23 @@ def get_pdf_orientation(pdf_path):
     return 'unknown'
 
 
+def extract_patient_name(filename):
+    """从文件名中提取患者名字 格式: Master700_数字_姓_名_时间戳.pdf"""
+    try:
+        import re
+        # 匹配中文姓名部分（至少2个中文字符，用下划线分隔）
+        pattern = r'_([\u4e00-\u9fff]+)_([\u4e00-\u9fff]+)_'
+        match = re.search(pattern, filename)
+
+        if match:
+            surname = match.group(1)  # 姓
+            given_name = match.group(2)  # 名
+            return f"{surname}{given_name}"
+        else:
+            return ""
+    except:
+        return ""
+
 def analysis_pdf(file_path):
     """
     解析pdf文件，并返回患者名字以及需要提取的数据
@@ -685,6 +703,8 @@ def analysis_pdf(file_path):
                     break
 
         delete_files(saved_jpgs)
+        name = extract_patient_name(file_name)
+        result['name'] = name
         print(datetime.now(), f"{file_path} 解析成功")
         return result.get('name', ''), result
     except Exception as e:
@@ -711,7 +731,16 @@ def regularly_parsing_eye_report():
 
             report_name = f"{patient_name}_{report.get('report_name')}" if patient_name else report.get('report_name')
             report_value = json.dumps(values, ensure_ascii=False, default=str) if values else ''
-            db.execute(f"UPDATE nsyy_gyl.ehp_reports SET report_name = '{report_name}', report_value = '{report_value}' "
+
+            bind_sql = ""
+            if patient_name:
+                patients = ehp_server.query_patient_by_name(patient_name)
+                if patients:
+                    register_id = patients[0].get('挂号id')
+                    patient_id = patients[0].get('门诊号')
+                    bind_sql = f" , register_id = '{register_id}', patient_id = '{patient_id}'"
+            db.execute(f"UPDATE nsyy_gyl.ehp_reports SET report_name = '{report_name}', "
+                       f"report_value = '{report_value}' {bind_sql} "
                        f"WHERE report_id = {report.get('report_id')}", need_commit=True)
     except Exception as e:
         del db

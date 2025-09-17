@@ -351,3 +351,45 @@ def query_patient_info(key, guahao_id, date_str):
     except Exception as e:
         print(f"发生错误: {e}")
         return []
+
+
+def query_patient_by_name(name):
+    import cx_Oracle
+    # 数据库连接配置（实际应用中应该从环境变量或配置文件中读取）
+    db_config = {'user': 'ZLHIS', 'password': "DAE42", 'dsn': '192.168.190.254:1521/orcl'}
+
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
+            a.执行人 AS 医生姓名, a.发生时间 as 就诊日期 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
+            join 病人信息 c on a.病人id = c.病人id WHERE a.记录状态 = 1 and c.姓名 like '%{name}%' 
+            and TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD')  order by a.发生时间 desc """
+
+    try:
+        # 建立数据库连接
+        with cx_Oracle.connect(**db_config) as connection:
+            # 创建游标
+            with connection.cursor() as cursor:
+                # 执行查询
+                cursor.execute(sql)
+
+                # 获取列名
+                columns = [col[0].lower() for col in cursor.description]  # 统一转为小写
+
+                # 获取所有结果并转换为字典列表
+                results = []
+                for row in cursor:
+                    # 处理NULL值，将cx_Oracle的NULL转为Python的None
+                    row_dict = {}
+                    for i, col in enumerate(columns):
+                        row_dict[col] = row[i] if row[i] is not None else None
+                    results.append(row_dict)
+
+                return results
+
+    except cx_Oracle.Error as error:
+        print(f"数据库查询出错: {error}")
+        return []
+    except Exception as e:
+        print(f"发生错误: {e}")
+        return []
+
