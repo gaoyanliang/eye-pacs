@@ -365,6 +365,7 @@ def analysis_pdf(file_path):
                                                or str(file_name).startswith("屈光四图")
                                                or str(file_name).startswith("OD")
                                                or str(file_name).startswith("OS")
+                                               or str(file_name).startswith("Master700")
                                                or str(file_name).startswith("角膜地形图")):
         return None, {}
 
@@ -587,6 +588,102 @@ def analysis_pdf(file_path):
 
             result = extract_corneal_data(ret_str)
 
+        elif str(file_name).startswith("Master700"):
+            # Master 700 报告
+            for item in saved_jpgs:
+                img = Image.open(item)
+                ret_str = ""
+                crop_box = (950, 930, 1600, 1090)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    joined_text = " ".join(all_texts)
+                    ret_str = ret_str + joined_text + '  '
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {crop_box} 失败: {e}')
+                if ret_str.__contains__("生物统计值") or ret_str.__contains__("生物") or ret_str.__contains__("生"):
+                    regions = [
+                        (250, 1360, 560, 1425),
+                        (650, 2760, 1220, 2820),
+                    ]
+                    r_ret_str = ""
+                    for region in regions:
+                        left, top, right, bottom = region
+                        crop_box = (left, top, right, bottom)
+                        try:
+                            roi = img.crop(crop_box)
+                            ocr_result = processor.ocr_image(np.array(roi))
+                            all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                            joined_text = " ".join(all_texts)
+                            # print(joined_text)
+                            r_ret_str = r_ret_str + joined_text + '  '
+                        except Exception as e:
+                            print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+
+                    regions = [
+                        (1330, 1360, 1630, 1425),
+                        (1720, 2760, 2240, 2820),
+                    ]
+                    l_ret_str = ""
+                    for region in regions:
+                        left, top, right, bottom = region
+                        crop_box = (left, top, right, bottom)
+                        try:
+                            roi = img.crop(crop_box)
+                            ocr_result = processor.ocr_image(np.array(roi))
+                            all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                            joined_text = " ".join(all_texts)
+                            # print(joined_text)
+                            l_ret_str = l_ret_str + joined_text + '  '
+                        except Exception as e:
+                            print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+
+                    def parse_biometry_data(data_string, is_left):
+                        """从字符串中解析AL值和CW-chord值"""
+                        # 初始化结果字典
+                        # 初始化结果字典
+                        ret = { 'AL': [], 'CW_chord': []}
+
+                        # 支持中英文的AL值正则表达式
+                        al_patterns = [
+                            r'AL:\s*(\d+\.\d+)\s*mm',  # 英文格式: AL: 26.21 mm
+                            r'AL[：:]\s*(\d+\.\d+)\s*mm',  # 中文冒号: AL：26.21 mm
+                        ]
+
+                        # 支持中英文的CW-chord值正则表达式
+                        cw_patterns = [
+                            r'(?:CW-chord|角膜直径)[：:]\s*([\d\.]+)\s*(?:mm|毫米|厘米|cm)?\s*(?:@|在|角度)?\s*(\d+)(?:°|度)?'
+                        ]
+
+                        # 解析AL值
+                        for pattern in al_patterns:
+                            al_matches = re.findall(pattern, data_string)
+                            for match in al_matches:
+                                ret['AL'].append(float(match))
+
+                        # 解析CW-chord值
+                        for pattern in cw_patterns:
+                            cw_matches = re.findall(pattern, data_string)
+                            for value, angle in cw_matches:
+                                ret['CW_chord'].append(f"{value} mm @ {angle}°")
+
+                        als = list(set(ret['AL']))
+                        cws = list(set(ret['CW_chord']))
+                        if is_left:
+                            result['l_al'] = als[0] if len(als) >0 else ''
+                            result['l_cw_chord'] = cws[0] if len(cws) >0 else ''
+                        else:
+                            result['r_al'] = als[0] if len(als) > 0 else ''
+                            result['r_cw_chord'] = cws[0] if len(cws) > 0 else ''
+                        return result
+
+                    dict1 = parse_biometry_data(l_ret_str, True)
+                    dict2 = parse_biometry_data(r_ret_str, False)
+                    result = {**dict1, **dict2}
+
+                    break
+
         delete_files(saved_jpgs)
         print(datetime.now(), f"{file_path} 解析成功")
         return result.get('name', ''), result
@@ -599,7 +696,7 @@ def regularly_parsing_eye_report():
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     report_list = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_reports "
-                               f"WHERE report_value is null and report_machine != '蔡司Master700' ORDER BY report_time limit 5")
+                               f"WHERE report_value is null ORDER BY report_time limit 5")
 
     try:
         value_list = []
@@ -625,7 +722,9 @@ def regularly_parsing_eye_report():
 # macOS环境检测
 if __name__ == "__main__":
     start_time = time.time()
-    file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
+    # file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
+    file_path = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
+
     patient_name, values = analysis_pdf(file_path)
     print(patient_name)
     print(values)

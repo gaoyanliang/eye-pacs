@@ -162,6 +162,7 @@ def get_pdf_page_size(pdf_path):
 
 pdf_file = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OS_11092025_110222_4 Maps Refr_20250911161528.pdf"
 
+pdf_file = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
 
 output_directory = "."  # 替换为你的输出目录
 saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
@@ -207,7 +208,20 @@ coordinates = [[290, 1800], [1080, 1800], [1080, 2150], [290, 2150]]  # 左侧 �
 # # 切削深度
 # coordinates = [[1425, 940], [2380, 940], [2380, 1020], [1425, 1020]]
 
-# annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
+
+# # Master700
+# 标题
+coordinates = [[950, 930], [1600, 930], [1600, 1090], [950, 1090]]
+# OD AL
+coordinates = [[250, 1360], [560, 1360], [560, 1425], [250, 1425]]
+# OS AL
+coordinates = [[1330, 1360], [1630, 1360], [1630, 1425], [1330, 1425]]
+# OD CW-chord
+coordinates = [[650, 2760], [1220, 2760], [1220, 2820], [650, 2820]]
+# OS CW-chord
+coordinates = [[1720, 2760], [2240, 2760], [2240, 2820], [1720, 2820]]
+
+annotated_image = draw_rectangle_on_image(saved_jpgs[3], coordinates, "annotated.jpg")
 
 
 def process_pdf_with_orientation(pdf_path):
@@ -250,24 +264,4 @@ def process_pdf_with_orientation(pdf_path):
 
 
 
-file_name = os.path.basename("/home/nsyy/eye_hospital_pacs/Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf")
-print(file_name)
-
-if str(file_name).startswith("角膜内皮细胞报告"):
-    print('角膜内皮细胞报告')
-
-elif str(file_name).startswith("屈光四图") or (
-        (str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and str(file_name).__contains__(
-        "4 Maps Refr")):
-    print('屈光四图')
-
-elif str(file_name).startswith("角膜地形图"):
-    print('角膜地形图')
-
-elif (str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and not str(file_name).__contains__(
-        "Maps Refr"):
-    # 阿玛仕手术报告
-    print('阿玛仕手术报告')
-else:
-    print('----')
 

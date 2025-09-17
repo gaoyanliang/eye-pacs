@@ -165,6 +165,14 @@ def query_report_list(register_id):
                     "k1_os": merged_dict.get('l_k1', ''),
                     "k2_od": merged_dict.get('r_k2', ''),
                     "k2_os": merged_dict.get('l_k2', ''),
+                },
+                "eye_axis": {
+                    "od": merged_dict.get('r_al', ''),
+                    "os": merged_dict.get('l_al', ''),
+                },
+                "kappa_angle": {
+                    "od": merged_dict.get('r_cw_chord', ''),
+                    "os": merged_dict.get('l_cw_chord', ''),
                 }
             },
             "硬性角膜接触镜验配病历": {
