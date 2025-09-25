@@ -261,6 +261,30 @@ def place_on_file(patient_id, register_id, is_complete):
     del db
 
 
+"""中文姓名转拼音，自动处理多音字（按常用姓氏优先）。 输出结果为小写、空格分隔。"""
+
+
+def name_to_pinyin(name: str) -> str:
+    from pypinyin import pinyin, lazy_pinyin, Style
+    if not name:
+        return ""
+
+    # 处理姓氏
+    first_char = name[0]
+    if first_char in ehp_config.surname_pinyin_map:
+        first_pinyin = ehp_config.surname_pinyin_map[first_char]
+    else:
+        first_pinyin = lazy_pinyin(first_char, style=Style.NORMAL, strict=False)[0]
+
+    # 处理名字
+    if len(name) > 1:
+        other_pinyin = lazy_pinyin(name[1:], style=Style.NORMAL, strict=False)
+    else:
+        other_pinyin = []
+
+    return " ".join([first_pinyin] + other_pinyin)
+
+
 """查询患者信息 / 当日挂号列表"""
 
 
@@ -271,7 +295,8 @@ def query_patient_info(key, guahao_id, date_str):
 
     if key:
         sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
-                a.执行人 AS 医生姓名, a.发生时间 as 就诊日期 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
+                a.执行人 AS 医生姓名, a.发生时间 as 就诊日期, c.出生日期, c.家庭电话 联系电话, c.身份证号 
+                FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
                 join 病人信息 c on a.病人id = c.病人id WHERE a.记录状态 = 1 and (c.姓名 like '%{key}%' or 
                 c.身份证号 like '%{key}%' or c.家庭电话 like '%{key}%') order by a.发生时间 desc """
         params = {}
@@ -280,46 +305,22 @@ def query_patient_info(key, guahao_id, date_str):
         if not guahao_id:
             # 查询当日所有挂号记录
             sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
-            a.执行人 AS 医生姓名, a.发生时间 as 就诊日期 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
+                a.执行人 AS 医生姓名, a.发生时间 as 就诊日期, t2.出生日期, t2.家庭电话 联系电话, t2.身份证号 
+            FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id JOIN 病人信息 t2 ON a.病人id = t2.病人id
             WHERE TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') AND a.记录状态 = 1"""
             params = {}
         else:
             # 查询特定挂号ID的详细信息
-            sql = """
-                  SELECT t.id                                                            挂号ID, \
-                         t.no, \
-                         t.门诊号, \
-                         t2.就诊卡号, \
-                         t2.住院号                                                       病案号, \
-                         t.姓名, \
-                         t.性别,
-                         t2.出生日期, \
-                         t2.婚姻状况, \
-                         t2.国籍, \
-                         t2.民族, \
-                         '身份证'                                                        证件类型,
-                         t2.身份证号                                                     证件号码, \
-                         t2.家庭地址                                                     现住址, \
-                         t2.家庭电话                                                     联系电话,
-
-                         t.登记时间                                                      挂号时间, \
-                         t.登记时间                                                      报道时间, \
-                         t.执行时间                                                      就诊时间,
-                         fy.执行部门                                                     就诊科室, \
-                         t.执行人, \
-                         ry.专业技术职务                                                 职称,
-                         CASE WHEN fy.执行部门 LIKE '%急诊%' THEN '急诊' ELSE '门诊' END 就诊类型,
-                         DECODE(t.复诊, 1, '是', '否')                                   是否复诊
-                  FROM 病人挂号记录 t
-                           JOIN 病人信息 t2 ON t.病人id = t2.病人id
-                           LEFT JOIN 人员表 ry ON ry.姓名 = t.执行人
-                           LEFT JOIN (SELECT t10.病人id, t10.no, t11.名称 执行部门 \
-                                      FROM 门诊费用记录 t10 \
-                                               JOIN 部门表 t11 ON t10.执行部门id = t11.id \
-                                      WHERE 记录性质 = 4 \
-                                        AND 记录状态 = 1) fy ON t.病人id = fy.病人id AND t.no = fy.no
-
-                  WHERE t.id = :guahao_id \
+            sql = """SELECT t.id 挂号ID, t.no, t.门诊号, t2.就诊卡号, t2.住院号 病案号, t.姓名 AS 患者姓名, t.性别, t2.出生日期, \
+                         t2.婚姻状况, t2.国籍, t2.民族, '身份证' 证件类型, t2.身份证号 证件号码, \
+                         t2.家庭地址 现住址, t2.家庭电话 联系电话, t.登记时间 挂号时间, t.登记时间 报道时间, \
+                         t.执行时间 就诊时间, fy.执行部门 就诊科室, t.执行人, ry.专业技术职务 职称,
+                         CASE WHEN fy.执行部门 LIKE '%急诊%' THEN '急诊' ELSE '门诊' END 就诊类型, 
+                         DECODE(t.复诊, 1, '是', '否') 是否复诊
+                FROM 病人挂号记录 t JOIN 病人信息 t2 ON t.病人id = t2.病人id
+                LEFT JOIN 人员表 ry ON ry.姓名 = t.执行人 LEFT JOIN (SELECT t10.病人id, t10.no, t11.名称 执行部门 \
+                FROM 门诊费用记录 t10 JOIN 部门表 t11 ON t10.执行部门id = t11.id \
+                WHERE 记录性质 = 4 AND 记录状态 = 1) fy ON t.病人id = fy.病人id AND t.no = fy.no WHERE t.id = :guahao_id \
                   """
             params = {'guahao_id': guahao_id}
 
@@ -343,6 +344,8 @@ def query_patient_info(key, guahao_id, date_str):
                         row_dict[col] = row[i] if row[i] is not None else None
                     results.append(row_dict)
 
+                for item in results:
+                    item['姓名拼音'] = name_to_pinyin(item['患者姓名'])
                 return results[0] if guahao_id else results
 
     except cx_Oracle.Error as error:
@@ -351,6 +354,9 @@ def query_patient_info(key, guahao_id, date_str):
     except Exception as e:
         print(f"发生错误: {e}")
         return []
+
+
+"""根据名字查询患者 内部使用 用于将报告绑定患者"""
 
 
 def query_patient_by_name(name):
