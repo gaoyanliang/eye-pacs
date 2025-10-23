@@ -384,6 +384,7 @@ def analysis_pdf(file_path):
                                                or str(file_name).startswith("OD")
                                                or str(file_name).startswith("OS")
                                                or str(file_name).startswith("Master700")
+                                               or str(file_name).startswith("眼表综合检查报告")
                                                or str(file_name).startswith("角膜地形图")):
         return None, {}
 
@@ -392,7 +393,7 @@ def analysis_pdf(file_path):
         # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
         saved_jpgs = pdf_to_jpg(file_path)
         # print(datetime.now(), f'{file_path} 已转换为图片，数量 {len(saved_jpgs)}, 耗时 {time.time() - start_time} 秒')
-        start_time = time.time()
+        # start_time = time.time()
 
         # 解析图片，识别患者姓名 & 提取数据
         file_name = os.path.basename(file_path)
@@ -435,19 +436,70 @@ def analysis_pdf(file_path):
 
             result = extract_name_and_cd(ret_str)
 
-        elif str(file_name).startswith("屈光四图") or ((str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and str(file_name).__contains__("4 Maps Refr")):
+        elif ((str(file_name).__contains__("_OD_20") or str(file_name).__contains__("_OS_20"))
+              and not str(file_name).__contains__("Maps Refr")):
+            # 阿玛仕手术报告
+            img = Image.open(saved_jpgs[0])
+            regions = [
+                (300, 940, 1200, 1100),
+                (400, 1350, 1600, 1450),
+                (300, 1555, 1200, 1625),
+                (1425, 700, 2380, 780),
+                (1425, 940, 2380, 1020),
+            ]
+            ret_str = ""
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    joined_text = " ".join(all_texts)
+                    # print(joined_text)
+                    ret_str = ret_str + joined_text + '  '
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+
+            def extract_corneal_data(text: str) -> Dict[str, List[str]]:
+                """从阿玛仕手术报告文本中提取关键信息"""
+                result = {}
+                eye_type = 'od' if str(file_name).__contains__('OD') else 'os'
+                # 角膜曲率
+                d_match = re.findall(r"(\d+,\d+)\s+D", text)
+                if d_match:
+                    d_match = d_match[:2]
+                    d_match = ",".join(d_match)
+                result[f'corneal_curvate_{eye_type}'] = d_match if d_match else ''
+
+                # 屈光度
+                name_match = re.search(r"(-?\d+,\d+\s+D\s+-?\d+,\d+\s+Dx\s*\d+)", text)
+                result[f"diopter_{eye_type}"] = name_match.group(1) if name_match else ''
+                result[f"light_area_{eye_type}"] = re.search(r"(\d+,\d+\s+mm)", text).group(1) if re.search(r"(\d+,\d+\s+mm)", text) else ''
+                result[f"cut_depth_{eye_type}"] = re.search(r"(\d+\s+um)", text).group(1) if re.search(r"(\d+\s+um)", text) else ''
+                result[f"cut_time_{eye_type}"]  = re.search(r"(\d+\s+s)", text).group(1) if re.search(r"(\d+\s+s)", text) else ''
+                result['name'] = ''
+                return result
+
+            result = extract_corneal_data(ret_str)
+
+        elif str(file_name).startswith("屈光四图") or ((str(file_name).__contains__("OD") or
+                                                        str(file_name).__contains__("OS"))
+                                                       and str(file_name).__contains__("4 Maps Refr")):
             orientation = get_pdf_orientation(saved_jpgs[0])
             if orientation == 'portrait':
                 regions = [
                     (50, 1150, 700, 1450),
                     (60, 1450, 700, 1710),
                     (60, 2250, 700, 2500),
+                    (60, 2480, 700, 2670),
                 ]
             else:
                 regions = [
                     (280, 500, 1080, 860),
                     (290, 890, 1080, 1350),
                     (290, 1800, 1080, 2150),
+                    (290, 2150, 1080, 2370),
                 ]
 
             img = Image.open(saved_jpgs[0])
@@ -465,7 +517,7 @@ def analysis_pdf(file_path):
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
 
-            def extract_eye_exam_data(text: str) -> Dict[str, Optional[str]]:
+            def extract_eye_exam_data(text: str, last_text: str) -> Dict[str, Optional[str]]:
                 """
                 从眼科检查文本中提取关键信息（包含眼睛位置和时间）
                 """
@@ -504,9 +556,15 @@ def analysis_pdf(file_path):
                 if thinnest_match:
                     result[f"{eye}thinnest_point"] = thinnest_match.group(1)
 
+                # 8. 提取前房深度  水平方向白到白距离
+                # items = re.findall(r'([\d.]+)\s*(毫米3|毫米|度?)', last_text)
+                pattern = r'([\d.]+)\s*(毫米3|毫米\.3|毫米|度?)'
+                items = re.findall(pattern, last_text)
+                result[f"{eye}distance"] = f"{items[1][0]}{items[1][1]}" if len(items) > 1 and len(items[1]) > 1 else ''
+                result[f"{eye}depth"] = f"{items[4][0]}{items[4][1]}" if len(items) > 4 and len(items[4]) > 1 else ''
                 return result
 
-            result = extract_eye_exam_data(ret_str)
+            result = extract_eye_exam_data(ret_str, joined_text)
 
         elif str(file_name).startswith("角膜地形图"):
             img = Image.open(saved_jpgs[0])
@@ -560,52 +618,6 @@ def analysis_pdf(file_path):
 
             result = extract_corneal_data(ret_str)
 
-        elif (str(file_name).__contains__("OD") or str(file_name).__contains__("OS")) and not str(file_name).__contains__("Maps Refr"):
-            # 阿玛仕手术报告
-            img = Image.open(saved_jpgs[0])
-            regions = [
-                (300, 940, 1200, 1100),
-                (400, 1350, 1600, 1450),
-                (300, 1555, 1200, 1625),
-                (1425, 700, 2380, 780),
-                (1425, 940, 2380, 1020),
-            ]
-            ret_str = ""
-            for region in regions:
-                left, top, right, bottom = region
-                crop_box = (left, top, right, bottom)
-                try:
-                    roi = img.crop(crop_box)
-                    ocr_result = processor.ocr_image(np.array(roi))
-                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
-                    joined_text = " ".join(all_texts)
-                    # print(joined_text)
-                    ret_str = ret_str + joined_text + '  '
-                except Exception as e:
-                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
-
-            def extract_corneal_data(text: str) -> Dict[str, List[str]]:
-                """从阿玛仕手术报告文本中提取关键信息"""
-                result = {}
-                eye_type = 'od' if str(file_name).__contains__('OD') else 'os'
-                # 角膜曲率
-                d_match = re.findall(r"(\d+,\d+)\s+D", text)
-                if d_match:
-                    d_match = d_match[:2]
-                    d_match = ",".join(d_match)
-                result[f'corneal_curvate_{eye_type}'] = d_match if d_match else ''
-
-                # 屈光度
-                name_match = re.search(r"(-?\d+,\d+\s+D\s+-?\d+,\d+\s+Dx\s*\d+)", text)
-                result[f"diopter_{eye_type}"] = name_match.group(1) if name_match else ''
-                result[f"light_area_{eye_type}"] = re.search(r"(\d+,\d+\s+mm)", text).group(1) if re.search(r"(\d+,\d+\s+mm)", text) else ''
-                result[f"cut_depth_{eye_type}"] = re.search(r"(\d+\s+um)", text).group(1) if re.search(r"(\d+\s+um)", text) else ''
-                result[f"cut_time_{eye_type}"]  = re.search(r"(\d+\s+s)", text).group(1) if re.search(r"(\d+\s+s)", text) else ''
-                result['name'] = ''
-                return result
-
-            result = extract_corneal_data(ret_str)
-
         elif str(file_name).startswith("Master700"):
             # Master 700 报告
             for item in saved_jpgs:
@@ -624,6 +636,7 @@ def analysis_pdf(file_path):
                     regions = [
                         (250, 1360, 560, 1425),
                         (650, 2760, 1220, 2820),
+                        (220, 2710, 600, 2770),
                     ]
                     r_ret_str = ""
                     for region in regions:
@@ -642,6 +655,7 @@ def analysis_pdf(file_path):
                     regions = [
                         (1330, 1360, 1630, 1425),
                         (1720, 2760, 2240, 2820),
+                        (1290, 2710, 1700, 2770),
                     ]
                     l_ret_str = ""
                     for region in regions:
@@ -661,7 +675,7 @@ def analysis_pdf(file_path):
                         """从字符串中解析AL值和CW-chord值"""
                         # 初始化结果字典
                         # 初始化结果字典
-                        ret = { 'AL': [], 'CW_chord': []}
+                        ret = { 'AL': [], 'CW_chord': [], "WTW": []}
 
                         # 支持中英文的AL值正则表达式
                         al_patterns = [
@@ -672,6 +686,11 @@ def analysis_pdf(file_path):
                         # 支持中英文的CW-chord值正则表达式
                         cw_patterns = [
                             r'(?:CW-chord|角膜直径)[：:]\s*([\d\.]+)\s*(?:mm|毫米|厘米|cm)?\s*(?:@|在|角度)?\s*(\d+)(?:°|度)?'
+                        ]
+
+                        wtw_patterns = [
+                            r'WTW:\s*(\d+\.\d+)\s*mm',  # 英文格式: WTW: 26.21 mm
+                            r'WTW[：:]\s*(\d+\.\d+)\s*mm',  # 中文冒号: WTW：26.21 mm
                         ]
 
                         # 解析AL值
@@ -686,13 +705,22 @@ def analysis_pdf(file_path):
                             for value, angle in cw_matches:
                                 ret['CW_chord'].append(f"{value} mm @ {angle}°")
 
+                        # 解析WTW值
+                        for pattern in wtw_patterns:
+                            wtw_matches = re.findall(pattern, data_string)
+                            for match in wtw_matches:
+                                ret['WTW'].append(float(match))
+
                         als = list(set(ret['AL']))
                         cws = list(set(ret['CW_chord']))
+                        wtw = list(set(ret['WTW']))
                         if is_left:
                             result['l_al'] = als[0] if len(als) >0 else ''
+                            result['l_wtw'] = wtw[0] if len(wtw) >0 else ''
                             result['l_cw_chord'] = cws[0] if len(cws) >0 else ''
                         else:
                             result['r_al'] = als[0] if len(als) > 0 else ''
+                            result['r_wtw'] = wtw[0] if len(wtw) > 0 else ''
                             result['r_cw_chord'] = cws[0] if len(cws) > 0 else ''
                         return result
 
@@ -702,11 +730,48 @@ def analysis_pdf(file_path):
 
                     break
 
+        elif str(file_name).startswith("眼表综合检查报告"):
+            # 眼表综合检查报告
+            img = Image.open(saved_jpgs[0])
+            regions = [
+                (50, 310, 500, 390),
+                (620, 500, 1000, 580),
+                (1400, 500, 1700, 580),
+            ]
+            i = 0
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                d = ''
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    joined_text = "".join(all_texts)
+                    # print(joined_text)
+                    if i == 0:
+                        match = re.search(r'[：:]\s*([\u4e00-\u9fa5]{2,4})', joined_text)
+                        if match:
+                            d = match.group(1).strip()
+                    else:
+                        d = joined_text
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+                    d = ''
+
+                if i == 0:
+                    result["name"] = d
+                if i == 1:
+                    result["r_first_rupture_time"] = d
+                if i == 2:
+                    result["l_first_rupture_time"] = d
+                i = i + 1
+
         delete_files(saved_jpgs)
         if not result.get('name'):
             name = extract_patient_name(file_name)
             result['name'] = name
-        print(datetime.now(), f"{file_path} 解析成功")
+        print(datetime.now(), f"{file_path} 解析成功， 耗时 {time.time() - start_time} s")
         return result.get('name', ''), result
     except Exception as e:
         print(datetime.now(), f"解析文件 {file_path} 失败: {e}")
@@ -730,7 +795,7 @@ def regularly_parsing_eye_report():
             if not values:
                 values = {"res": "analysis failed"}
 
-            report_name = f"{patient_name}_{report.get('report_name')}" if patient_name else report.get('report_name')
+            report_name = report.get('report_name')
             report_value = json.dumps(values, ensure_ascii=False, default=str) if values else ''
 
             bind_sql = ""
@@ -750,78 +815,18 @@ def regularly_parsing_eye_report():
 
 
 # macOS环境检测
-if __name__ == "__main__":
-    start_time = time.time()
-    # file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
-    file_path = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
+# if __name__ == "__main__":
+#     start_time = time.time()
+#     # file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
+#     file_path = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
+#     file_path = r"E:\pdf_share\Master700.pdf"
+#     file_path = r"E:\pdf_share\屈光四图.pdf"
+#     # file_path = r"E:\test_share1\屈光四图.pdf"
+#     file_path = r"E:\pdf_share\0.pdf"
+#
+#     patient_name, values = analysis_pdf(file_path)
+#     print(patient_name)
+#     print(values)
 
-    patient_name, values = analysis_pdf(file_path)
-    print(patient_name)
-    print(values)
 
-    # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/4.pdf"
-    # # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/代码/5.pdf"
-    # patient_name, values = analysis_pdf(pdf_file)
-    #
-    # print("患者姓名: ", patient_name)
-    # # print("识别结果: ", values)
-    # for k, v in values.items():
-    #     print(k, ": ", v)
-    # print("PDF 识别完成，耗时:", time.time() - start_time, "秒")
 
-    # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/205-北 眼前节测量评估系统/ODpentacam四图.pdf"  # 替换为你的 PDF 文件路径
-    # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/204角膜地形图仪/干眼检查报告1.pdf"  # 替换为你的 PDF 文件路径
-
-    # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/塑形镜验配图.pdf"
-    # pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/202角膜内皮显微镜/202 角膜内皮细胞报告.pdf"
-    # pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
-    # output_directory = "."  # 替换为你的输出目录
-    # saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
-    # print("转换完成的 JPG 文件完整路径:")
-    # for path in saved_jpgs:
-    #     print(path)
-    #
-    # print("PDF 转换 JPG 完成，耗时:", round(time.time() - start_time, 2), "秒")
-    #
-    # # 使用示例
-    # processor = OCRProcessor()
-    #
-    # # 示例1: 识别PNG截图（处理透明背景）
-    # # result = processor.ocr_image(r"/Users/gaoyanliang/Downloads/L角膜OCT.jpg", merge_level=2)
-    # # result = processor.ocr_image(saved_jpgs[0], merge_level=2)
-    #
-    # # # 示例2: 识别PDF转换的图片
-    # # with open(saved_jpgs[0], "rb") as f:
-    # #     result = processor.ocr_image(f.read(), language='en')
-    #
-    # # 方式3 按坐标解析
-    # img = Image.open(saved_jpgs[0])
-    #
-    # regions = [
-    #     (300, 940, 1200, 1100),
-    #     (400, 1350, 1600, 1450),
-    #     (300, 1555, 1200, 1625),
-    #     (1425, 700, 2380, 780),
-    #     (1425, 940, 2380, 1020),
-    # ]
-    # ret_str = ''
-    # for region in regions:
-    #     left, top, right, bottom = region
-    #     crop_box = (left, top, right, bottom)
-    #     try:
-    #         # 裁剪感兴趣区域
-    #         roi = img.crop(crop_box)
-    #         # OCR识别
-    #         ocr_result = processor.ocr_image(np.array(roi))
-    #
-    #         all_texts = [item["text"] for item in ocr_result.get("data", [])]
-    #         joined_text = " ".join(all_texts)
-    #         ret_str = ret_str + joined_text +  "  "
-    #
-    #     except Exception as e:
-    #         print(e)
-    #
-    # print(ret_str)
-    #
-    # print("识别完成，耗时:", round(time.time() - start_time, 2), "秒")
-    # # delete_files(saved_jpgs)

@@ -279,6 +279,10 @@ def query_report_list(register_id):
                     "od": merged_dict.get('r_thinnest_point', ''),
                     "os": merged_dict.get('l_thinnest_point', '')
                 },
+                "tbut": {
+                    "od": merged_dict.get('r_first_rupture_time', ''),
+                    "os": merged_dict.get('l_first_rupture_time', '')
+                },
                 "curvature_radius": {
                     "od": merged_dict.get('r_rm', ''),
                     "os": merged_dict.get('l_rm', ''),

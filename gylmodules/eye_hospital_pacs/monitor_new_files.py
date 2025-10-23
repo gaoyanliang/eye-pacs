@@ -107,33 +107,42 @@ def process_file(src_rel_path, retry_count=0):
         date_str = datetime.now().strftime("%Y%m%d%H%M%S")
         machine = '未收录设备'
         if str(ext).lower().__contains__('pdf'):
-            if filename.startswith("202."):
-                basename = "角膜内皮细胞报告"
-                machine = "角膜内皮显微镜"
-            elif filename.startswith("203."):
-                basename = "角膜地形图"
-                machine = "Medmont"
-            elif filename.startswith("204."):
-                basename = "蔡司检查"
-                machine = "蔡司"
-            elif filename.startswith("205."):
-                basename = "生物力学"
-                machine = "非接触式眼压计"
-            elif filename.startswith("4.") or filename.__contains__("4 Maps Refr"):
-                basename = "屈光四图"
-                machine = "眼前节分析仪"
-            elif filename.startswith("5."):
-                basename = "屈光六图"
-                machine = "眼前节分析仪"
+            if filename.startswith("0"):
+                basename = "眼表综合检查报告"
+                machine = "角膜地形图仪"
             elif filename.startswith("1."):
                 basename = "干眼分析1"
                 machine = "角膜地形图仪"
-            elif filename.startswith("2."):
+            elif filename.startswith("2"):
                 basename = "干眼分析2"
                 machine = "角膜地形图仪"
-            elif filename.startswith("3."):
+            elif filename.startswith("3"):
                 basename = "干眼分析3"
                 machine = "角膜地形图仪"
+            elif (filename == "4.pdf" or filename.startswith("4r") or filename.startswith("4l")
+                  or filename.startswith("4R") or filename.startswith("4L") or filename.__contains__("4 Maps Refr")):
+                basename = "屈光四图"
+                machine = "眼前节分析仪"
+            elif (filename == "5.pdf" or filename.startswith("5r") or filename.startswith("5l")
+                  or filename.startswith("5R") or filename.startswith("5L")):
+                basename = "屈光六图"
+                machine = "眼前节分析仪"
+            elif (filename == "6.pdf" or filename.startswith("6r") or filename.startswith("6l")
+                  or filename.startswith("6R") or filename.startswith("6L")):
+                basename = "生物力学"
+                machine = "非接触式眼压计"
+            elif filename.startswith("7"):
+                basename = "眼底照片"
+                machine = "眼底照相机"
+            if filename.startswith("8"):
+                basename = "角膜内皮细胞报告"
+                machine = "角膜内皮显微镜"
+            elif filename.startswith("9"):
+                basename = "角膜地形图"
+                machine = "角膜地形图仪Medmont"
+            elif filename.startswith("10"):
+                basename = "角膜地形图1"
+                machine = "角膜地形图仪Medmont"
 
         new_filename = f"{basename}_{date_str}{ext}"
         # 阿玛仕设备特殊判断

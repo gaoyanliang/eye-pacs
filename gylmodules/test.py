@@ -1,222 +1,271 @@
-# 每 10 s扫描一次共享目录，将新文件移动到指定目录
-# 根据文件代码，重命名文件名字
-import os
-import time
-import shutil
-from datetime import datetime
+# # 每 10 s扫描一次共享目录，将新文件移动到指定目录
+# # 根据文件代码，重命名文件名字
+# import os
+# import time
+# import shutil
+# from datetime import datetime
+#
+# from gylmodules.eye_hospital_pacs.ehp_server import query_patient_by_name
+# from gylmodules.eye_hospital_pacs.pdf_ocr_analysis import analysis_pdf
+#
+# # 配置参数
+# SOURCE_DIR = "/srv/samba/shared"  # 监控的共享目录
+# DEST_BASE_DIR = "/home/nsyy/pdf-report-catalog"  # 目标基础目录
+# CHECK_INTERVAL = 20  # 检查间隔（秒）
+#
+# MAX_RETRIES = 3  # 最大重试次数
+# FILE_STABILITY_CHECK_INTERVAL = 1  # 文件稳定性检查间隔（秒）
+# FILE_STABILITY_CHECKS = 3  # 文件稳定性检查次数
+#
+#
+# """检查文件是否被其他进程锁定（Linux系统）"""
+#
+#
+# def is_file_locked(filepath):
+#     import subprocess
+#     try:
+#         output = subprocess.check_output(['lsof', filepath], stderr=subprocess.PIPE)
+#         return bool(output)
+#     except subprocess.CalledProcessError:
+#         return False
+#     except Exception:
+#         # 如果lsof不可用，则跳过锁定检查
+#         return False
+#
+#
+# """改进的文件稳定性检查"""
+#
+#
+# def is_file_stable(filepath):
+#     sizes, mtimes = [], []
+#     for _ in range(FILE_STABILITY_CHECKS):
+#         try:
+#             sizes.append(os.path.getsize(filepath))
+#             mtimes.append(os.path.getmtime(filepath))
+#             time.sleep(FILE_STABILITY_CHECK_INTERVAL)
+#         except OSError:
+#             return False
+#
+#     # 检查文件大小和修改时间是否稳定
+#     if len(set(sizes)) != 1 or len(set(mtimes)) != 1:
+#         return False
+#
+#     # 检查文件是否被锁定
+#     if is_file_locked(filepath):
+#         return False
+#
+#     return True
+#
+#
+# def get_dated_subdir():
+#     """获取当天日期的子目录路径，如果不存在则创建"""
+#     date_str = datetime.now().strftime("%Y%m%d")
+#     dated_dir = os.path.join(DEST_BASE_DIR, date_str)
+#     os.makedirs(dated_dir, exist_ok=True)
+#     return dated_dir
+#
+#
+# def ensure_dirs_exist():
+#     """确保基础目录存在"""
+#     os.makedirs(SOURCE_DIR, exist_ok=True)
+#     os.makedirs(DEST_BASE_DIR, exist_ok=True)
+#     print(f"监控目录: {SOURCE_DIR}")
+#     print(f"目标基础目录: {DEST_BASE_DIR}")
+#
+#
+# def process_file(src_rel_path, retry_count=0):
+#     """处理文件：保持原始目录结构，移动到当天日期的子目录"""
+#     try:
+#         # 源文件完整路径
+#         src_full_path = os.path.join(SOURCE_DIR, src_rel_path)
+#
+#         # 基础检查
+#         if not os.path.exists(src_full_path):
+#             print(f"文件不存在: {src_full_path}")
+#             return False, ''
+#
+#         # 检查文件稳定性
+#         if not is_file_stable(src_full_path):
+#             if retry_count < MAX_RETRIES:
+#                 print(f"文件不稳定，将重试({retry_count+1}/{MAX_RETRIES}): {src_full_path}")
+#                 time.sleep(5)  # 等待更长时间再重试
+#                 return process_file(src_rel_path, retry_count + 1)
+#             else:
+#                 print(f"文件仍不稳定，放弃处理: {src_full_path}")
+#                 return False, ''
+#
+#         # 分离文件名和扩展名
+#         dirname, filename = os.path.split(src_rel_path)
+#         basename, ext = os.path.splitext(filename)
+#         date_str = datetime.now().strftime("%Y%m%d%H%M%S")
+#         machine = '未收录设备'
+#         if str(ext).lower().__contains__('pdf'):
+#             if filename.startswith("202."):
+#                 basename = "角膜内皮细胞报告"
+#                 machine = "角膜内皮显微镜"
+#             elif filename.startswith("203."):
+#                 basename = "角膜地形图"
+#                 machine = "Medmont"
+#             elif filename.startswith("204."):
+#                 basename = "蔡司检查"
+#                 machine = "蔡司"
+#             elif filename.startswith("205."):
+#                 basename = "生物力学"
+#                 machine = "非接触式眼压计"
+#             elif filename.startswith("4."):
+#                 basename = "屈光四图"
+#                 machine = "眼前节分析仪"
+#             elif filename.startswith("5."):
+#                 basename = "屈光六图"
+#                 machine = "眼前节分析仪"
+#             elif filename.startswith("1."):
+#                 basename = "干眼分析1"
+#                 machine = "角膜地形图仪"
+#             elif filename.startswith("2."):
+#                 basename = "干眼分析2"
+#                 machine = "角膜地形图仪"
+#             elif filename.startswith("3."):
+#                 basename = "干眼分析3"
+#                 machine = "角膜地形图仪"
+#
+#         new_filename = f"{basename}_{date_str}{ext}"
+#
+#         print(f'发现文件 {new_filename} 来自 {machine}')
+#
+#         # 获取当天日期目录
+#         dated_dir = get_dated_subdir()
+#         # 目标路径（保持原始目录结构）
+#         dest_full_path = os.path.join(dated_dir, dirname, new_filename)
+#         dest_dir = os.path.dirname(dest_full_path)
+#
+#         # 创建目标目录（如果不存在）
+#         os.makedirs(dest_dir, exist_ok=True)
+#
+#         # 移动文件
+#         shutil.move(src_full_path, dest_full_path)
+#         print(f"文件已移动: {src_rel_path} -> {dated_dir}/{dirname}/{new_filename}")
+#         return True, (new_filename, dest_full_path.replace('/', '&'), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), machine)
+#
+#     except Exception as e:
+#         print(f"处理文件 {src_rel_path} 失败: {e}")
+#         # return False, ''
+#
+#
+# def monitor_directory():
+#     """监控目录及其子目录（改进版）"""
+#     ensure_dirs_exist()
+#     current_dated_dir = get_dated_subdir()
+#     last_check_date = datetime.now().date()
+#
+#     try:
+#         start_time = time.time()
+#         # 获取当前日期并检查是否变化
+#         now = datetime.now()
+#         if now.date() != last_check_date:
+#             new_dated_dir = get_dated_subdir()
+#             print(f"日期变化，新日期目录: {new_dated_dir}")
+#             current_dated_dir = new_dated_dir
+#             last_check_date = now.date()
+#
+#         # 处理所有现有文件（包括新文件和之前遗留的）
+#         processed_count = 0
+#         process_file_list = []
+#         for root, _, files in os.walk(SOURCE_DIR):
+#             for filename in files:
+#                 if str(filename).startswith('.') or not str(filename).endswith('pdf'):
+#                     continue
+#                 src_path = os.path.join(root, filename)
+#                 rel_path = os.path.relpath(src_path, SOURCE_DIR)
+#
+#                 try:
+#                     process_file(rel_path)
+#                     # ret, path = process_file(rel_path)
+#                     # if ret:
+#                     #     processed_count += 1
+#                     #     process_file_list.append(path)
+#                     # else:
+#                     #     print(f"文件处理失败，将重试: {rel_path}")
+#                 except Exception as e:
+#                     print(f"处理文件异常: {rel_path} - {str(e)}")
+#
+#         # if process_file_list:
+#         #     # 批量插入数据库
+#         #     insert_sql = """INSERT INTO nsyy_gyl.ehp_reports
+#         #                     (report_name, report_addr, report_time, report_machine)
+#         #                     VALUES (%s, %s, %s, %s)"""
+#         #     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
+#         #                 global_config.DB_DATABASE_GYL)
+#         #     db.execute_many(insert_sql, args=process_file_list, need_commit=True)
+#         #     del db
+#
+#     except KeyboardInterrupt:
+#         print("监控程序已正常停止")
+#     except Exception as e:
+#         print(f"监控发生致命错误: {str(e)}")
+#         raise
+#
+#
+# if __name__ == "__main__":
+#     # logger.info(f"文件将按日期存储在: {DEST_BASE_DIR}/YYYYMMDD/")
+#     # monitor_directory()
+#     pdf_file = r"E:\pdf_share\屈光四图_20251021153203.pdf"
+#
+#     patient_name, values = analysis_pdf(pdf_file)
+#
+#     if patient_name:
+#         patients = query_patient_by_name(patient_name)
+#         if patients:
+#             register_id = patients[0].get('挂号id')
+#             patient_id = patients[0].get('门诊号')
+#             bind_sql = f" , register_id = '{register_id}', patient_id = '{patient_id}'"
+#
+#
 
-from gylmodules.eye_hospital_pacs.ehp_server import query_patient_by_name
-from gylmodules.eye_hospital_pacs.pdf_ocr_analysis import analysis_pdf
 
-# 配置参数
-SOURCE_DIR = "/srv/samba/shared"  # 监控的共享目录
-DEST_BASE_DIR = "/home/nsyy/pdf-report-catalog"  # 目标基础目录
-CHECK_INTERVAL = 20  # 检查间隔（秒）
+import re
 
-MAX_RETRIES = 3  # 最大重试次数
-FILE_STABILITY_CHECK_INTERVAL = 1  # 文件稳定性检查间隔（秒）
-FILE_STABILITY_CHECKS = 3  # 文件稳定性检查次数
+text = "患者姓名：蒋凤翔"
 
-
-"""检查文件是否被其他进程锁定（Linux系统）"""
+# 方法1：简单提取
+match = re.search(r'患者姓名：\s*(\S+)', text)
+if match:
+    name = match.group(1)
+    print(f"患者姓名: {name}")
 
 
-def is_file_locked(filepath):
-    import subprocess
+# 方法2：更安全的提取（带异常处理）
+def extract_patient_name(text):
     try:
-        output = subprocess.check_output(['lsof', filepath], stderr=subprocess.PIPE)
-        return bool(output)
-    except subprocess.CalledProcessError:
-        return False
-    except Exception:
-        # 如果lsof不可用，则跳过锁定检查
-        return False
+        match = re.search(r'患者姓名[：:]\s*([\u4e00-\u9fa5]+)', text)
+        return match.group(1) if match else ""
+    except:
+        return ""
 
 
-"""改进的文件稳定性检查"""
+# 方法3：支持多种格式
+def robust_name_extraction(text):
+    patterns = [
+        r'患者姓名[：:]\s*([\u4e00-\u9fa5]{2,4})',
+        r'姓名[：:]\s*([\u4e00-\u9fa5]{2,4})',
+        r'[：:]\s*([\u4e00-\u9fa5]{2,4})',
+        r'Patient Name[：:]\s*([A-Za-z\s]+)'
+    ]
+    patterns = [
+        r'[：:]\s*([\u4e00-\u9fa5]{2,4})'
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1).strip()
+
+    return ""
 
 
-def is_file_stable(filepath):
-    sizes, mtimes = [], []
-    for _ in range(FILE_STABILITY_CHECKS):
-        try:
-            sizes.append(os.path.getsize(filepath))
-            mtimes.append(os.path.getmtime(filepath))
-            time.sleep(FILE_STABILITY_CHECK_INTERVAL)
-        except OSError:
-            return False
-
-    # 检查文件大小和修改时间是否稳定
-    if len(set(sizes)) != 1 or len(set(mtimes)) != 1:
-        return False
-
-    # 检查文件是否被锁定
-    if is_file_locked(filepath):
-        return False
-
-    return True
+# 使用示例
+name = robust_name_extraction(text)
+print(f"提取的姓名: '{name}'")
 
 
-def get_dated_subdir():
-    """获取当天日期的子目录路径，如果不存在则创建"""
-    date_str = datetime.now().strftime("%Y%m%d")
-    dated_dir = os.path.join(DEST_BASE_DIR, date_str)
-    os.makedirs(dated_dir, exist_ok=True)
-    return dated_dir
-
-
-def ensure_dirs_exist():
-    """确保基础目录存在"""
-    os.makedirs(SOURCE_DIR, exist_ok=True)
-    os.makedirs(DEST_BASE_DIR, exist_ok=True)
-    print(f"监控目录: {SOURCE_DIR}")
-    print(f"目标基础目录: {DEST_BASE_DIR}")
-
-
-def process_file(src_rel_path, retry_count=0):
-    """处理文件：保持原始目录结构，移动到当天日期的子目录"""
-    try:
-        # 源文件完整路径
-        src_full_path = os.path.join(SOURCE_DIR, src_rel_path)
-
-        # 基础检查
-        if not os.path.exists(src_full_path):
-            print(f"文件不存在: {src_full_path}")
-            return False, ''
-
-        # 检查文件稳定性
-        if not is_file_stable(src_full_path):
-            if retry_count < MAX_RETRIES:
-                print(f"文件不稳定，将重试({retry_count+1}/{MAX_RETRIES}): {src_full_path}")
-                time.sleep(5)  # 等待更长时间再重试
-                return process_file(src_rel_path, retry_count + 1)
-            else:
-                print(f"文件仍不稳定，放弃处理: {src_full_path}")
-                return False, ''
-
-        # 分离文件名和扩展名
-        dirname, filename = os.path.split(src_rel_path)
-        basename, ext = os.path.splitext(filename)
-        date_str = datetime.now().strftime("%Y%m%d%H%M%S")
-        machine = '未收录设备'
-        if str(ext).lower().__contains__('pdf'):
-            if filename.startswith("202."):
-                basename = "角膜内皮细胞报告"
-                machine = "角膜内皮显微镜"
-            elif filename.startswith("203."):
-                basename = "角膜地形图"
-                machine = "Medmont"
-            elif filename.startswith("204."):
-                basename = "蔡司检查"
-                machine = "蔡司"
-            elif filename.startswith("205."):
-                basename = "生物力学"
-                machine = "非接触式眼压计"
-            elif filename.startswith("4."):
-                basename = "屈光四图"
-                machine = "眼前节分析仪"
-            elif filename.startswith("5."):
-                basename = "屈光六图"
-                machine = "眼前节分析仪"
-            elif filename.startswith("1."):
-                basename = "干眼分析1"
-                machine = "角膜地形图仪"
-            elif filename.startswith("2."):
-                basename = "干眼分析2"
-                machine = "角膜地形图仪"
-            elif filename.startswith("3."):
-                basename = "干眼分析3"
-                machine = "角膜地形图仪"
-
-        new_filename = f"{basename}_{date_str}{ext}"
-
-        print(f'发现文件 {new_filename} 来自 {machine}')
-
-        # 获取当天日期目录
-        dated_dir = get_dated_subdir()
-        # 目标路径（保持原始目录结构）
-        dest_full_path = os.path.join(dated_dir, dirname, new_filename)
-        dest_dir = os.path.dirname(dest_full_path)
-
-        # 创建目标目录（如果不存在）
-        os.makedirs(dest_dir, exist_ok=True)
-
-        # 移动文件
-        shutil.move(src_full_path, dest_full_path)
-        print(f"文件已移动: {src_rel_path} -> {dated_dir}/{dirname}/{new_filename}")
-        return True, (new_filename, dest_full_path.replace('/', '&'), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), machine)
-
-    except Exception as e:
-        print(f"处理文件 {src_rel_path} 失败: {e}")
-        # return False, ''
-
-
-def monitor_directory():
-    """监控目录及其子目录（改进版）"""
-    ensure_dirs_exist()
-    current_dated_dir = get_dated_subdir()
-    last_check_date = datetime.now().date()
-
-    try:
-        start_time = time.time()
-        # 获取当前日期并检查是否变化
-        now = datetime.now()
-        if now.date() != last_check_date:
-            new_dated_dir = get_dated_subdir()
-            print(f"日期变化，新日期目录: {new_dated_dir}")
-            current_dated_dir = new_dated_dir
-            last_check_date = now.date()
-
-        # 处理所有现有文件（包括新文件和之前遗留的）
-        processed_count = 0
-        process_file_list = []
-        for root, _, files in os.walk(SOURCE_DIR):
-            for filename in files:
-                if str(filename).startswith('.') or not str(filename).endswith('pdf'):
-                    continue
-                src_path = os.path.join(root, filename)
-                rel_path = os.path.relpath(src_path, SOURCE_DIR)
-
-                try:
-                    process_file(rel_path)
-                    # ret, path = process_file(rel_path)
-                    # if ret:
-                    #     processed_count += 1
-                    #     process_file_list.append(path)
-                    # else:
-                    #     print(f"文件处理失败，将重试: {rel_path}")
-                except Exception as e:
-                    print(f"处理文件异常: {rel_path} - {str(e)}")
-
-        # if process_file_list:
-        #     # 批量插入数据库
-        #     insert_sql = """INSERT INTO nsyy_gyl.ehp_reports
-        #                     (report_name, report_addr, report_time, report_machine)
-        #                     VALUES (%s, %s, %s, %s)"""
-        #     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
-        #                 global_config.DB_DATABASE_GYL)
-        #     db.execute_many(insert_sql, args=process_file_list, need_commit=True)
-        #     del db
-
-    except KeyboardInterrupt:
-        print("监控程序已正常停止")
-    except Exception as e:
-        print(f"监控发生致命错误: {str(e)}")
-        raise
-
-
-if __name__ == "__main__":
-    # logger.info(f"文件将按日期存储在: {DEST_BASE_DIR}/YYYYMMDD/")
-    # monitor_directory()
-    pdf_file = r"E:\pdf_share\屈光四图_20251021153203.pdf"
-
-    patient_name, values = analysis_pdf(pdf_file)
-
-    if patient_name:
-        patients = query_patient_by_name(patient_name)
-        if patients:
-            register_id = patients[0].get('挂号id')
-            patient_id = patients[0].get('门诊号')
-            bind_sql = f" , register_id = '{register_id}', patient_id = '{patient_id}'"
 
 
