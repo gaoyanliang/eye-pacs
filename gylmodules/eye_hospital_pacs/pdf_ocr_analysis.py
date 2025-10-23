@@ -101,9 +101,9 @@ class OCRProcessor:
                 if global_config.run_in_local:
                     self._ocr_engine = PaddleOCR(lang='ch', use_angle_cls=False,
                                                  use_gpu=False, enable_mkldnn=False, show_log=False,
-                                                 det_model_dir='./inference/ch_ppocr_server_v2.0_det_infer/',
-                                                 rec_model_dir='./inference/ch_ppocr_server_v2.0_rec_infer/',
-                                                 rec_char_dict_path='./inference/ppocr_keys_v1.txt',
+                                                 det_model_dir=r'C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\inference\ch_ppocr_server_v2.0_det_infer',
+                                                 rec_model_dir=r'C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\inference\ch_ppocr_server_v2.0_rec_infer',
+                                                 rec_char_dict_path=r'C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\inference\ppocr_keys_v1.txt',
                                                  cls_model_dir=None  # 显式禁用分类模型
                                                  )
                 else:
@@ -703,8 +703,9 @@ def analysis_pdf(file_path):
                     break
 
         delete_files(saved_jpgs)
-        name = extract_patient_name(file_name)
-        result['name'] = name
+        if not result.get('name'):
+            name = extract_patient_name(file_name)
+            result['name'] = name
         print(datetime.now(), f"{file_path} 解析成功")
         return result.get('name', ''), result
     except Exception as e:

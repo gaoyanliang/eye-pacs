@@ -5,6 +5,8 @@ import time
 import shutil
 from datetime import datetime
 
+from gylmodules.eye_hospital_pacs.ehp_server import query_patient_by_name
+from gylmodules.eye_hospital_pacs.pdf_ocr_analysis import analysis_pdf
 
 # 配置参数
 SOURCE_DIR = "/srv/samba/shared"  # 监控的共享目录
@@ -205,5 +207,16 @@ def monitor_directory():
 
 if __name__ == "__main__":
     # logger.info(f"文件将按日期存储在: {DEST_BASE_DIR}/YYYYMMDD/")
-    monitor_directory()
+    # monitor_directory()
+    pdf_file = r"E:\pdf_share\屈光四图_20251021153203.pdf"
+
+    patient_name, values = analysis_pdf(pdf_file)
+
+    if patient_name:
+        patients = query_patient_by_name(patient_name)
+        if patients:
+            register_id = patients[0].get('挂号id')
+            patient_id = patients[0].get('门诊号')
+            bind_sql = f" , register_id = '{register_id}', patient_id = '{patient_id}'"
+
 

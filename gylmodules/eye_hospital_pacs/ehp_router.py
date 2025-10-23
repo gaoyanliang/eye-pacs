@@ -11,6 +11,26 @@ from gylmodules.eye_hospital_pacs import ehp_server, monitor_new_files, pdf_ocr_
 ehp_system = Blueprint('Eye Hospital Pacs', __name__, url_prefix='/ehp')
 
 
+@ehp_system.route('/new_patient', methods=['POST'])
+@api_response
+def new_patient(json_data):
+    ehp_server.new_patient(json_data)
+
+
+@ehp_system.route('/delete_patient', methods=['POST'])
+@api_response
+def delete_patient(json_data):
+    ehp_server.delete_patient(json_data.get("register_id"))
+
+
+@ehp_system.route('/ehp_data', methods=['POST'])
+@api_response
+def ehp_data():
+    return {
+        "visit_dept_list": ["干眼门诊", "眼科门诊", "屈光手术门诊"],
+        "doc_name_list": ["王豪", "赵举", "白石", "贾玲", "李剑波", "余建咪", "朱豫", "张艳", "侯习武", "张君苒", "雷鸣", "景聪荣", "余庆阳", "景聪荣", "景聪荣"]
+    }
+
 @ehp_system.route('/medical_record', methods=['POST'])
 @api_response
 @validate_params('register_id')
@@ -22,6 +42,12 @@ def create_medical_record(json_data):
 @api_response
 def update_medical_record(json_data):
     ehp_server.update_medical_record_detail(json_data)
+
+
+@ehp_system.route('/delete_medical_record', methods=['POST'])
+@api_response
+def delete_medical_record(json_data):
+    ehp_server.delete_medical_record(json_data)
 
 
 @ehp_system.route('/query_medical_list', methods=['POST', 'GET'])
@@ -41,6 +67,13 @@ def query_medical_record(json_data):
 @api_response
 def query_report_list(json_data):
     return ehp_server.query_report_list(json_data.get('register_id'))
+
+
+@ehp_system.route('/query_history_reports', methods=['POST', 'GET'])
+@api_response
+def query_history_reports():
+    return ehp_server.query_history_reports()
+
 
 
 @ehp_system.route('/bind_report', methods=['POST', 'GET'])
