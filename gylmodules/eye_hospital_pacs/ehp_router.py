@@ -131,7 +131,8 @@ def upload_file():
 @ehp_system.route('/monitor_task', methods=['POST', 'GET'])
 @api_response
 def monitor_task():
-    monitor_new_files.run_monitor()
+    monitor_new_files.monitor_directory()
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 @ehp_system.route('/patient_info', methods=['POST', 'GET'])

@@ -107,43 +107,43 @@ def process_file(src_rel_path, retry_count=0):
         date_str = datetime.now().strftime("%Y%m%d%H%M%S")
         machine = '未收录设备'
         if str(ext).lower().__contains__('pdf'):
-            if filename.startswith("0"):
+            if filename.startswith("21") or filename.startswith("23"):
+                basename = "角膜内皮细胞报告"
+                machine = "角膜内皮显微镜"
+            elif filename.startswith("22"):
+                basename = "角膜内皮细胞报告2"
+                machine = "角膜内皮显微镜"
+            elif filename.startswith("31") or filename.startswith("32"):
+                basename = "角膜地形图"
+                machine = "角膜地形图仪Medmont"
+            elif (filename.startswith("41") or filename.startswith("42") or filename.startswith("43")
+                  or filename.startswith("44")):
                 basename = "眼表综合检查报告"
                 machine = "角膜地形图仪"
-            elif filename.startswith("1."):
-                basename = "干眼分析1"
-                machine = "角膜地形图仪"
-            elif filename.startswith("2"):
-                basename = "干眼分析2"
-                machine = "角膜地形图仪"
-            elif filename.startswith("3"):
-                basename = "干眼分析3"
-                machine = "角膜地形图仪"
-            elif (filename == "4.pdf" or filename.startswith("4r") or filename.startswith("4l")
-                  or filename.startswith("4R") or filename.startswith("4L") or filename.__contains__("4 Maps Refr")):
+            elif (filename.startswith("51r") or filename.startswith("51l")
+                      or filename.startswith("51R") or filename.startswith("51L") or filename.__contains__(
+                            "4 Maps Refr")):
                 basename = "屈光四图"
                 machine = "眼前节分析仪"
-            elif (filename == "5.pdf" or filename.startswith("5r") or filename.startswith("5l")
-                  or filename.startswith("5R") or filename.startswith("5L")):
+            elif (filename.startswith("52r") or filename.startswith("52l")
+                  or filename.startswith("52R") or filename.startswith("52L")):
                 basename = "屈光六图"
                 machine = "眼前节分析仪"
-            elif (filename == "6.pdf" or filename.startswith("6r") or filename.startswith("6l")
+            elif (filename.startswith("53r") or filename.startswith("53l")
+                  or filename.startswith("53R") or filename.startswith("53L")):
+                basename = "Scheimpflug图像总览"
+                machine = "眼前节分析仪"
+            elif (filename.startswith("54r") or filename.startswith("54l")
+                  or filename.startswith("54R") or filename.startswith("54L")):
+                basename = "比较两次检查"
+                machine = "眼前节分析仪"
+            elif (filename.startswith("6r") or filename.startswith("6l")
                   or filename.startswith("6R") or filename.startswith("6L")):
                 basename = "生物力学"
                 machine = "非接触式眼压计"
             elif filename.startswith("7"):
                 basename = "眼底照片"
                 machine = "眼底照相机"
-            if filename.startswith("8"):
-                basename = "角膜内皮细胞报告"
-                machine = "角膜内皮显微镜"
-            elif filename.startswith("9"):
-                basename = "角膜地形图"
-                machine = "角膜地形图仪Medmont"
-            elif filename.startswith("10"):
-                basename = "角膜地形图1"
-                machine = "角膜地形图仪Medmont"
-
         new_filename = f"{basename}_{date_str}{ext}"
         # 阿玛仕设备特殊判断
         if basename.__contains__('_'):
@@ -178,58 +178,59 @@ def monitor_directory():
     last_check_date = datetime.now().date()
 
     try:
-        while True:
-            start_time = time.time()
-            # 获取当前日期并检查是否变化
-            now = datetime.now()
-            if now.date() != last_check_date:
-                new_dated_dir = get_dated_subdir()
-                logger.debug(f"日期变化，新日期目录: {new_dated_dir}")
-                current_dated_dir = new_dated_dir
-                last_check_date = now.date()
+        start_time = time.time()
+        # 获取当前日期并检查是否变化
+        now = datetime.now()
+        if now.date() != last_check_date:
+            new_dated_dir = get_dated_subdir()
+            logger.debug(f"日期变化，新日期目录: {new_dated_dir}")
+            current_dated_dir = new_dated_dir
+            last_check_date = now.date()
 
-            # 处理所有现有文件（包括新文件和之前遗留的）
-            processed_count = 0
-            process_file_list = []
-            for root, _, files in os.walk(SOURCE_DIR):
-                for filename in files:
-                    if str(filename).startswith('.') or not str(filename).endswith('pdf'):
-                        continue
-                    src_path = os.path.join(root, filename)
-                    rel_path = os.path.relpath(src_path, SOURCE_DIR)
-
+        # 处理所有现有文件（包括新文件和之前遗留的）
+        processed_count = 0
+        process_file_list = []
+        for root, _, files in os.walk(SOURCE_DIR):
+            for filename in files:
+                # 添加删除功能
+                if filename.endswith('.dcm.upt'):
                     try:
-                        ret, path = process_file(rel_path)
-                        if ret:
-                            processed_count += 1
-                            process_file_list.append(path)
-                        else:
-                            logger.warning(f"文件处理失败，将重试: {rel_path}")
+                        src_path = os.path.join(root, filename)
+                        os.remove(src_path)
                     except Exception as e:
-                        logger.error(f"处理文件异常: {rel_path} - {str(e)}")
+                        pass
+                    continue
 
-            if process_file_list:
-                # 批量插入数据库
-                insert_sql = """INSERT INTO nsyy_gyl.ehp_reports 
-                                (report_name, report_addr, report_time, report_machine) 
-                                VALUES (%s, %s, %s, %s)"""
-                db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
-                            global_config.DB_DATABASE_GYL)
-                db.execute_many(insert_sql, args=process_file_list, need_commit=True)
-                del db
+                if str(filename).startswith('.') or not str(filename).endswith('pdf'):
+                    continue
+                src_path = os.path.join(root, filename)
+                rel_path = os.path.relpath(src_path, SOURCE_DIR)
 
-            # 等待下一次检查
-            time.sleep(CHECK_INTERVAL)
+                try:
+                    ret, path = process_file(rel_path)
+                    if ret:
+                        processed_count += 1
+                        process_file_list.append(path)
+                    else:
+                        logger.warning(f"文件处理失败，将重试: {rel_path}")
+                except Exception as e:
+                    logger.error(f"处理文件异常: {rel_path} - {str(e)}")
 
+
+        if process_file_list:
+            # 批量插入数据库
+            insert_sql = """INSERT INTO nsyy_gyl.ehp_reports 
+                            (report_name, report_addr, report_time, report_machine) 
+                            VALUES (%s, %s, %s, %s)"""
+            db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
+                        global_config.DB_DATABASE_GYL)
+            db.execute_many(insert_sql, args=process_file_list, need_commit=True)
+            del db
     except KeyboardInterrupt:
         logger.error("监控程序已正常停止")
     except Exception as e:
         logger.error(f"监控发生致命错误: {str(e)}")
         raise
-
-
-def run_monitor():
-    global_tools.start_thread(monitor_directory)
 
 # if __name__ == "__main__":
 #     logger.info(f"文件将按日期存储在: {DEST_BASE_DIR}/YYYYMMDD/")

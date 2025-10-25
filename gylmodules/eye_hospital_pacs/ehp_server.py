@@ -158,7 +158,7 @@ def update_medical_record_detail(json_data):
                 global_config.DB_DATABASE_GYL)
     try:
         update_sql = f"""UPDATE nsyy_gyl.ehp_medical_record_list 
-        SET table_value = '{json.dumps(table_value, default=str, ensure_ascii=False)}' where id = {record_detail_id}"""
+        SET table_value = '{json.dumps(table_value, default=str, ensure_ascii=False)}' where record_id = {record_detail_id}"""
         db.execute(update_sql, need_commit=True)
         del db
     except Exception as e:
@@ -272,70 +272,93 @@ def query_report_list(register_id):
                         'bind_report': report_group,
                         'other_report': other_report,
                     },
-            "手术安全核查表": ehp_config.verification_form,
-            "屈光手术风险评估": ehp_config.risk_assessment,
-            "术前眼部检查": {
-                "corneal_thick": {
-                    "od": merged_dict.get('r_thinnest_point', ''),
-                    "os": merged_dict.get('l_thinnest_point', '')
+                "手术安全核查表": ehp_config.verification_form,
+                "屈光手术风险评估": ehp_config.risk_assessment,
+                "术前眼部检查": {
+                    "corneal_thick": {
+                        "od": merged_dict.get('r_thinnest_point', ''),
+                        "os": merged_dict.get('l_thinnest_point', '')
+                    },
+                    "tbut": {
+                        "od": merged_dict.get('r_first_rupture_time', ''),
+                        "os": merged_dict.get('l_first_rupture_time', '')
+                    },
+                    "curvature_radius": {
+                        "od": merged_dict.get('r_rm', ''),
+                        "os": merged_dict.get('l_rm', ''),
+                    },
+                    "corneal_curvature": {
+                        "k1_od": merged_dict.get('r_k1', ''),
+                        "k1_os": merged_dict.get('l_k1', ''),
+                        "k2_od": merged_dict.get('r_k2', ''),
+                        "k2_os": merged_dict.get('l_k2', ''),
+                    },
+                    "eye_axis": {
+                        "od": merged_dict.get('r_al', ''),
+                        "os": merged_dict.get('l_al', ''),
+                    },
+                    "kappa_angle": {
+                        "od": merged_dict.get('r_cw_chord', ''),
+                        "os": merged_dict.get('l_cw_chord', ''),
+                    }
                 },
-                "tbut": {
-                    "od": merged_dict.get('r_first_rupture_time', ''),
-                    "os": merged_dict.get('l_first_rupture_time', '')
+                "硬性角膜接触镜验配病历": {
+                    "corneal_para": {
+                        "inner_od": merged_dict.get('r_cd', ''),
+                        "inner_os": merged_dict.get('l_cd', ''),
+                        "evalue_od": merged_dict.get('r_pe', ''),
+                        "evalue_os": merged_dict.get('l_pe', ''),
+                        "diameter_od": "",
+                        "diameter_os": "",
+                        "thickness_od": "",
+                        "thickness_os": "",
+                        "curvature_k1_od": merged_dict.get('r_pk1', ''),
+                        "curvature_k1_os": merged_dict.get('l_pk1', ''),
+                        "curvature_k2_od": merged_dict.get('r_xk2', ''),
+                        "curvature_k2_os": merged_dict.get('l_xk2', ''),
+                    }
                 },
-                "curvature_radius": {
-                    "od": merged_dict.get('r_rm', ''),
-                    "os": merged_dict.get('l_rm', ''),
+                "TransPRK/FS_LASIK手术记录": {
+                    "corneal_curvate_od": merged_dict.get('corneal_curvate_od', ''),
+                    "corneal_curvate_os": merged_dict.get('corneal_curvate_os', ''),
+                    "diopter_od": merged_dict.get('diopter_od', ''),
+                    "diopter_os": merged_dict.get('diopter_os', ''),
+                    "corneal_thick_od": merged_dict.get('corneal_thick_od', ''),
+                    "corneal_thick_os": merged_dict.get('corneal_thick_os', ''),
+                    "flap_thick_od": merged_dict.get('flap_thick_od', ''),
+                    "flap_thick_os": merged_dict.get('flap_thick_os', ''),
+                    "light_area_od": merged_dict.get('light_area_od', ''),
+                    "light_area_os": merged_dict.get('light_area_os', ''),
+                    "cut_depth_od": merged_dict.get('cut_depth_od', ''),
+                    "cut_depth_os": merged_dict.get('cut_depth_os', ''),
+                    "cut_time_od": merged_dict.get('cut_time_od', ''),
+                    "cut_time_os": merged_dict.get('cut_time_os', ''),
                 },
-                "corneal_curvature": {
-                    "k1_od": merged_dict.get('r_k1', ''),
-                    "k1_os": merged_dict.get('l_k1', ''),
-                    "k2_od": merged_dict.get('r_k2', ''),
-                    "k2_os": merged_dict.get('l_k2', ''),
-                },
-                "eye_axis": {
-                    "od": merged_dict.get('r_al', ''),
-                    "os": merged_dict.get('l_al', ''),
-                },
-                "kappa_angle": {
-                    "od": merged_dict.get('r_cw_chord', ''),
-                    "os": merged_dict.get('l_cw_chord', ''),
+                "双眼角膜胶原交联术-手术风险评估表": {"er": "0分 P1：正常的患者；除局部病变，无系统性疾病", "yi": "0分 I类手术切口(清洁手术)", "san": "0分 T1：手术在3小时内完成", "total": 0, "operator": "", "table_id": "双眼角膜胶原交联术-手术风险评估表", "nnis_score": 0, "table_name": "双眼角膜胶原交联术-手术风险评估表", "is_emergent": "", "unsign_check": "", "wound_infect": "", "wound_status": True, "operation_eye": "", "operation_time": "", "operation_type": ["器管手术"], "signature_nurse": "", "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "signature_operator": "王豪", "signature_anesthetist": "王豪"},
+                "双眼角膜胶原交联术-手术安全核查": {"operator": "", "table_id": "双眼角膜胶原交联术-手术安全核查", "table_name": "双眼角膜胶原交联术-手术安全核查", "operation_eye": "", "operation_time": "", "after_operation": {"other": "", "skin_check": "是", "basic_check": "是", "patient_way": "离院", "operation_mark": "", "pipeline_check": [], "signature_nurse": "", "operation_method": "是", "operation_sample": "是", "operation_supply": "是", "operation_medical": "是", "signature_operator": "", "signature_anesthetist": ""}, "before_operation": {"other": "", "addon_check": "", "basic_check": "是", "nurse_other": "", "estimated_time": True, "operation_mark": "是", "operation_risk": "", "operator_other": "", "estimated_blood": True, "operation_focus": True, "signature_nurse": "", "special_medical": True, "anesthesia_focus": ["其他"], "anesthesia_other": "", "operation_method": "是", "instrument_status": True, "antibacterial_test": True, "signature_anesthetist": ""}, "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "before_anesthesia": {"other": "", "skin_check": "是", "addon_check": [], "basic_check": "是", "blood_check": "否", "mskin_check": "是", "venous_access": "否", "operation_mark": "是", "signature_nurse": "", "allergic_history": "是", "anesthesia_check": "是", "operation_method": "是", "anesthesia_method": "是", "antibacterial_test": "否", "signature_operator": "王豪", "signature_anesthetist": "王豪", "operation_consent_form": "是", "anesthesia_consent_form": "是"}},
+                "晶体植入术前眼部检查": {
+                    "eyeExam": {
+                        "acd": {
+                            "od": merged_dict.get('r_depth', ''),
+                            "os": merged_dict.get('l_depth', ''),
+                        },
+                        "wtw": {
+                            "master": {
+                                "od": merged_dict.get('r_wtw', ''),
+                                "os": merged_dict.get('l_wtw', ''),
+                            },
+                            "pentacam": {
+                                "od": merged_dict.get('r_distance', ''),
+                                "os": merged_dict.get('l_distance', '')
+                            }
+                        },
+                        "endothelialCells": {
+                            "od": merged_dict.get('r_cd', ''),
+                            "os": merged_dict.get('l_cd', ''),
+                        }
+                    }
+
                 }
-            },
-            "硬性角膜接触镜验配病历": {
-                "corneal_para": {
-                    "inner_od": merged_dict.get('r_cd', ''),
-                    "inner_os": merged_dict.get('l_cd', ''),
-                    "evalue_od": merged_dict.get('r_pe', ''),
-                    "evalue_os": merged_dict.get('l_pe', ''),
-                    "diameter_od": "",
-                    "diameter_os": "",
-                    "thickness_od": "",
-                    "thickness_os": "",
-                    "curvature_k1_od": merged_dict.get('r_pk1', ''),
-                    "curvature_k1_os": merged_dict.get('l_pk1', ''),
-                    "curvature_k2_od": merged_dict.get('r_xk2', ''),
-                    "curvature_k2_os": merged_dict.get('l_xk2', ''),
-                }
-            },
-            "TransPRK/FS_LASIK手术记录": {
-                "corneal_curvate_od": merged_dict.get('corneal_curvate_od', ''),
-                "corneal_curvate_os": merged_dict.get('corneal_curvate_os', ''),
-                "diopter_od": merged_dict.get('diopter_od', ''),
-                "diopter_os": merged_dict.get('diopter_os', ''),
-                "corneal_thick_od": merged_dict.get('corneal_thick_od', ''),
-                "corneal_thick_os": merged_dict.get('corneal_thick_os', ''),
-                "flap_thick_od": merged_dict.get('flap_thick_od', ''),
-                "flap_thick_os": merged_dict.get('flap_thick_os', ''),
-                "light_area_od": merged_dict.get('light_area_od', ''),
-                "light_area_os": merged_dict.get('light_area_os', ''),
-                "cut_depth_od": merged_dict.get('cut_depth_od', ''),
-                "cut_depth_os": merged_dict.get('cut_depth_os', ''),
-                "cut_time_od": merged_dict.get('cut_time_od', ''),
-                "cut_time_os": merged_dict.get('cut_time_os', ''),
-            },
-            "双眼角膜胶原交联术-手术风险评估表": {"er": "0分 P1：正常的患者；除局部病变，无系统性疾病", "yi": "0分 I类手术切口(清洁手术)", "san": "0分 T1：手术在3小时内完成", "total": 0, "operator": "", "table_id": "双眼角膜胶原交联术-手术风险评估表", "nnis_score": 0, "table_name": "双眼角膜胶原交联术-手术风险评估表", "is_emergent": "", "unsign_check": "", "wound_infect": "", "wound_status": True, "operation_eye": "", "operation_time": "", "operation_type": ["器管手术"], "signature_nurse": "", "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "signature_operator": "王豪", "signature_anesthetist": "王豪"},
-            "双眼角膜胶原交联术-手术安全核查": {"operator": "", "table_id": "双眼角膜胶原交联术-手术安全核查", "table_name": "双眼角膜胶原交联术-手术安全核查", "operation_eye": "", "operation_time": "", "after_operation": {"other": "", "skin_check": "是", "basic_check": "是", "patient_way": "离院", "operation_mark": "", "pipeline_check": [], "signature_nurse": "", "operation_method": "是", "operation_sample": "是", "operation_supply": "是", "operation_medical": "是", "signature_operator": "", "signature_anesthetist": ""}, "before_operation": {"other": "", "addon_check": "", "basic_check": "是", "nurse_other": "", "estimated_time": True, "operation_mark": "是", "operation_risk": "", "operator_other": "", "estimated_blood": True, "operation_focus": True, "signature_nurse": "", "special_medical": True, "anesthesia_focus": ["其他"], "anesthesia_other": "", "operation_method": "是", "instrument_status": True, "antibacterial_test": True, "signature_anesthetist": ""}, "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "before_anesthesia": {"other": "", "skin_check": "是", "addon_check": [], "basic_check": "是", "blood_check": "否", "mskin_check": "是", "venous_access": "否", "operation_mark": "是", "signature_nurse": "", "allergic_history": "是", "anesthesia_check": "是", "operation_method": "是", "anesthesia_method": "是", "antibacterial_test": "否", "signature_operator": "王豪", "signature_anesthetist": "王豪", "operation_consent_form": "是", "anesthesia_consent_form": "是"}}
             }
 
 

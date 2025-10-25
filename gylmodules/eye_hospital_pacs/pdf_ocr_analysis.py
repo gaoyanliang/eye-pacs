@@ -9,7 +9,7 @@ from paddleocr import PaddleOCR
 import time
 import io
 import os
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Literal
 from pdf2image import convert_from_path
 import re
 import cv2
@@ -302,56 +302,36 @@ class OCRProcessor:
         return merged
 
 
-def get_pdf_orientation(pdf_path):
+def get_pdf_orientation(image_path: str) -> Literal['portrait', 'landscape', 'square', 'unknown']:
     """
-    判断PDF页面方向
-    :param pdf_path: PDF文件路径
-    :return: 'portrait'(竖版), 'landscape'(横版), 'square'(正方形)
+    根据图片尺寸判断方向
+    :param image_path: 图片文件路径
+    :return: 方向类型
     """
-    try:
-        # 方法1: 使用PyPDF2
-        import PyPDF2
-        with open(pdf_path, 'rb') as file:
-            reader = PyPDF2.PdfReader(file)
-            if len(reader.pages) > 0:
-                page = reader.pages[0]
-                width = float(page.mediabox.width)
-                height = float(page.mediabox.height)
+    # 检查文件是否存在
+    if not os.path.exists(image_path):
+        print(f"图片文件不存在: {image_path}")
+        return 'unknown'
 
-                # 计算宽高比
-                ratio = width / height
-                if ratio > 1.2:  # 宽明显大于高
-                    return 'landscape'
-                elif ratio < 0.8:  # 高明显大于宽
-                    return 'portrait'
-                else:
-                    return 'square'
+    try:
+        # 打开图片并获取尺寸
+        with Image.open(image_path) as img:
+            width, height = img.size
+
+            # 计算宽高比
+            ratio = width / height
+
+            # 判断方向
+            if ratio > 1.25:  # 横版：宽明显大于高
+                return 'landscape'
+            elif ratio < 0.8:  # 竖版：高明显大于宽
+                return 'portrait'
+            else:  # 正方形或接近正方形
+                return 'square'
 
     except Exception as e:
-        print(f"PyPDF2读取失败: {e}")
-        try:
-            import fitz  # PyMuPDF
-            # 方法2: 使用PyMuPDF (更可靠)
-            doc = fitz.open(pdf_path)
-            if len(doc) > 0:
-                page = doc[0]
-                rect = page.rect
-                width = rect.width
-                height = rect.height
-
-                ratio = width / height
-                if ratio > 1.2:
-                    return 'landscape'
-                elif ratio < 0.8:
-                    return 'portrait'
-                else:
-                    return 'square'
-            doc.close()
-
-        except Exception as e2:
-            print(f"PyMuPDF读取失败: {e2}")
-
-    return 'unknown'
+        print(f"图片读取失败: {str(e)}")
+        return 'unknown'
 
 
 def extract_patient_name(filename):
@@ -381,10 +361,13 @@ def analysis_pdf(file_path):
     file_name = os.path.basename(file_path)
     if not file_path.endswith(".pdf") and not (str(file_name).startswith("角膜内皮细胞报告")
                                                or str(file_name).startswith("屈光四图")
+                                               or str(file_name).startswith("屈光六图")
+                                               or str(file_name).startswith("眼底照片")
                                                or str(file_name).startswith("OD")
                                                or str(file_name).startswith("OS")
                                                or str(file_name).startswith("Master700")
                                                or str(file_name).startswith("眼表综合检查报告")
+                                               or str(file_name).startswith("生物力学")
                                                or str(file_name).startswith("角膜地形图")):
         return None, {}
 
@@ -402,11 +385,18 @@ def analysis_pdf(file_path):
         result = {}
         if str(file_name).startswith("角膜内皮细胞报告"):
             img = Image.open(saved_jpgs[0])
-            regions = [
-                (330, 430, 2200, 550),
-                (1250, 1080, 1650, 1280),
-                (1250, 2380, 1650, 2580),
-            ]
+            if str(file_name).startswith("角膜内皮细胞报告2"):
+                regions = [
+                    (330, 430, 2200, 550),
+                    (1110, 1120, 1580, 1310),
+                    (1110, 2400, 1580, 2600),
+                ]
+            else:
+                regions = [
+                    (330, 430, 2200, 550),
+                    (1250, 1080, 1650, 1280),
+                    (1250, 2380, 1650, 2580),
+                ]
             ret_str = ""
             for region in regions:
                 left, top, right, bottom = region
@@ -750,7 +740,8 @@ def analysis_pdf(file_path):
                     joined_text = "".join(all_texts)
                     # print(joined_text)
                     if i == 0:
-                        match = re.search(r'[：:]\s*([\u4e00-\u9fa5]{2,4})', joined_text)
+                        # 匹配中文姓名（2-4个汉字）或英文姓名（字母和空格）
+                        match = re.search(r'[：:]\s*([\u4e00-\u9fa5]{2,4}|[A-Za-z\s]+)', joined_text)
                         if match:
                             d = match.group(1).strip()
                     else:
@@ -760,12 +751,109 @@ def analysis_pdf(file_path):
                     d = ''
 
                 if i == 0:
-                    result["name"] = d
+                    result["name"] = d.replace(' ', '')
                 if i == 1:
                     result["r_first_rupture_time"] = d
                 if i == 2:
                     result["l_first_rupture_time"] = d
                 i = i + 1
+
+        elif str(file_name).startswith("比较两次检查"):
+            img = Image.open(saved_jpgs[0])
+            regions = [
+                (540, 515, 850, 565),
+            ]
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    d = "".join(all_texts)
+                    # print(joined_text)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+                    d = ''
+                result["name"] = d.replace(' ', '').replace(',', '').replace('，', '').replace('.', '').replace('。', '')
+
+        elif str(file_name).startswith("Scheimpflug图像总览"):
+            img = Image.open(saved_jpgs[0])
+            regions = [
+                (530, 520, 850, 571),
+            ]
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    d = "".join(all_texts)
+                    # print(joined_text)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+                    d = ''
+                result["name"] = d.replace(' ', '').replace(',', '').replace('，', '').replace('.', '').replace('。', '')
+
+        elif str(file_name).startswith("生物力学"):
+            orientation = get_pdf_orientation(saved_jpgs[0])
+            if orientation == 'portrait':
+                # 竖版
+                regions = [(180, 1210, 430, 1250)]
+            else:
+                regions = [(420, 535, 750, 591)]
+            img = Image.open(saved_jpgs[0])
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    joined_text = "".join(all_texts)
+                    # print(joined_text)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+            result["name"] = joined_text.replace(' ', '').replace(',', '').replace('，', '').replace('.', '').replace('。', '')
+
+        elif str(file_name).startswith("屈光六图"):
+            orientation = get_pdf_orientation(saved_jpgs[0])
+            if orientation == 'portrait':
+                # 竖版
+                regions = [(1430, 1170, 1550, 1250)]
+            else:
+                regions = [(1990, 515, 2150, 610)]
+
+            img = Image.open(saved_jpgs[0])
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    joined_text = "".join(all_texts)
+                    # print(joined_text)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+            result["name"] = joined_text.replace(' ', '').replace(',', '').replace('，', '').replace('.', '').replace('。', '')
+
+        elif str(file_name).startswith("眼底照片"):
+            regions = [(1150, 50, 1600, 115)]
+            img = Image.open(saved_jpgs[0])
+            for region in regions:
+                left, top, right, bottom = region
+                crop_box = (left, top, right, bottom)
+                try:
+                    roi = img.crop(crop_box)
+                    ocr_result = processor.ocr_image(np.array(roi))
+                    all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                    joined_text = "".join(all_texts)
+                    # print(joined_text)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+            result["name"] = joined_text.replace(' ', '').replace(',', '').replace('，', '').replace('.', '').replace('。', '')
 
         delete_files(saved_jpgs)
         if not result.get('name'):
@@ -814,19 +902,23 @@ def regularly_parsing_eye_report():
     del db
 
 
-# macOS环境检测
-# if __name__ == "__main__":
-#     start_time = time.time()
-#     # file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
-#     file_path = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
-#     file_path = r"E:\pdf_share\Master700.pdf"
-#     file_path = r"E:\pdf_share\屈光四图.pdf"
-#     # file_path = r"E:\test_share1\屈光四图.pdf"
-#     file_path = r"E:\pdf_share\0.pdf"
-#
-#     patient_name, values = analysis_pdf(file_path)
-#     print(patient_name)
-#     print(values)
+if __name__ == "__main__":
+    start_time = time.time()
+    # file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
+    file_path = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
+    file_path = r"E:\pdf_share\Master700.pdf"
+    file_path = r"E:\pdf_share\屈光四图.pdf"
+    # file_path = r"E:\test_share1\屈光四图.pdf"
+    file_path = r"E:\pdf_share\眼表综合检查报告_20251024112220.pdf"
+    file_path = r"E:\pdf_share\生物力学L P+C.pdf"
+    file_path = r"E:\pdf_share\生物力学R P+C.pdf"
+    file_path = r"E:\pdf_share\屈光六图.pdf"
+    file_path = r"E:\pdf_share\生物力学_20251024172304.pdf"
+    file_path = r"E:\pdf_share\生物力学_20251024172224.pdf"
+
+    patient_name, values = analysis_pdf(file_path)
+    print(patient_name)
+    print(values)
 
 
 
