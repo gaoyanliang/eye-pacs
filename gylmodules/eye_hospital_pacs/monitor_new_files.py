@@ -120,26 +120,37 @@ def process_file(src_rel_path, retry_count=0):
                   or filename.startswith("44")):
                 basename = "眼表综合检查报告"
                 machine = "角膜地形图仪"
-            elif (filename.startswith("51r") or filename.startswith("51l")
-                      or filename.startswith("51R") or filename.startswith("51L") or filename.__contains__(
-                            "4 Maps Refr")):
-                basename = "屈光四图"
+            elif (filename.startswith("51r") or filename.startswith("51R")
+                      or filename.__contains__("4 Maps Refr")):
+                basename = "屈光四图-右"
                 machine = "眼前节分析仪"
-            elif (filename.startswith("52r") or filename.startswith("52l")
-                  or filename.startswith("52R") or filename.startswith("52L")):
-                basename = "屈光六图"
+            elif (filename.startswith("51l") or filename.startswith("51L")
+                      or filename.__contains__("4 Maps Refr")):
+                basename = "屈光四图-左"
                 machine = "眼前节分析仪"
-            elif (filename.startswith("53r") or filename.startswith("53l")
-                  or filename.startswith("53R") or filename.startswith("53L")):
-                basename = "Scheimpflug图像总览"
+            elif (filename.startswith("52r") or filename.startswith("52R")):
+                basename = "屈光六图-右"
                 machine = "眼前节分析仪"
-            elif (filename.startswith("54r") or filename.startswith("54l")
-                  or filename.startswith("54R") or filename.startswith("54L")):
-                basename = "比较两次检查"
+            elif (filename.startswith("52l") or filename.startswith("52L")):
+                basename = "屈光六图-左"
                 machine = "眼前节分析仪"
-            elif (filename.startswith("6r") or filename.startswith("6l")
-                  or filename.startswith("6R") or filename.startswith("6L")):
-                basename = "生物力学"
+            elif (filename.startswith("53r") or filename.startswith("53R")):
+                basename = "Scheimpflug图像总览-右"
+                machine = "眼前节分析仪"
+            elif (filename.startswith("53l") or filename.startswith("53L")):
+                basename = "Scheimpflug图像总览-左"
+                machine = "眼前节分析仪"
+            elif (filename.startswith("54r") or filename.startswith("54R")):
+                basename = "比较两次检查-右"
+                machine = "眼前节分析仪"
+            elif (filename.startswith("54l") or filename.startswith("54L")):
+                basename = "比较两次检查-左"
+                machine = "眼前节分析仪"
+            elif  (filename.startswith("6r") or filename.startswith("6R")):
+                basename = "生物力学-右"
+                machine = "非接触式眼压计"
+            elif (filename.startswith("6l") or filename.startswith("6L")):
+                basename = "生物力学-左"
                 machine = "非接触式眼压计"
             elif filename.startswith("7"):
                 basename = "眼底照片"

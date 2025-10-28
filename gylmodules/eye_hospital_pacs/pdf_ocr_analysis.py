@@ -598,6 +598,12 @@ def analysis_pdf(file_path):
                     result["r_xk2"] = steep_k_matches[0]
                     result["l_xk2"] = steep_k_matches[1] if len(steep_k_matches) > 1 else ''
 
+                # 匹配模式：△K 后跟数字和单位D
+                k_matches = re.findall(r'△K\s*([\d.]+)\s*D', text)
+                if k_matches:
+                    result["r_dk3"] = k_matches[0]
+                    result["l_dk3"] = k_matches[1] if len(steep_k_matches) > 1 else ''
+
                 # 4. 提取平面e值（多个）
                 flat_e_matches = re.findall(r'平面e\s*([\d\.]+)', text)
                 if flat_k_matches:
@@ -914,7 +920,7 @@ if __name__ == "__main__":
     file_path = r"E:\pdf_share\生物力学R P+C.pdf"
     file_path = r"E:\pdf_share\屈光六图.pdf"
     file_path = r"E:\pdf_share\生物力学_20251024172304.pdf"
-    file_path = r"E:\pdf_share\生物力学_20251024172224.pdf"
+    file_path = r"E:\pdf_share\角膜地形图_20251024173124.pdf"
 
     patient_name, values = analysis_pdf(file_path)
     print(patient_name)

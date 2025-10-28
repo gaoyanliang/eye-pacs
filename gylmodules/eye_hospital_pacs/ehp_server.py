@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import time
 from datetime import datetime
 
 from gylmodules import global_config
@@ -334,8 +335,8 @@ def query_report_list(register_id):
                     "cut_time_od": merged_dict.get('cut_time_od', ''),
                     "cut_time_os": merged_dict.get('cut_time_os', ''),
                 },
-                "双眼角膜胶原交联术-手术风险评估表": {"er": "0分 P1：正常的患者；除局部病变，无系统性疾病", "yi": "0分 I类手术切口(清洁手术)", "san": "0分 T1：手术在3小时内完成", "total": 0, "operator": "", "table_id": "双眼角膜胶原交联术-手术风险评估表", "nnis_score": 0, "table_name": "双眼角膜胶原交联术-手术风险评估表", "is_emergent": "", "unsign_check": "", "wound_infect": "", "wound_status": True, "operation_eye": "", "operation_time": "", "operation_type": ["器管手术"], "signature_nurse": "", "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "signature_operator": "王豪", "signature_anesthetist": "王豪"},
-                "双眼角膜胶原交联术-手术安全核查": {"operator": "", "table_id": "双眼角膜胶原交联术-手术安全核查", "table_name": "双眼角膜胶原交联术-手术安全核查", "operation_eye": "", "operation_time": "", "after_operation": {"other": "", "skin_check": "是", "basic_check": "是", "patient_way": "离院", "operation_mark": "", "pipeline_check": [], "signature_nurse": "", "operation_method": "是", "operation_sample": "是", "operation_supply": "是", "operation_medical": "是", "signature_operator": "", "signature_anesthetist": ""}, "before_operation": {"other": "", "addon_check": "", "basic_check": "是", "nurse_other": "", "estimated_time": True, "operation_mark": "是", "operation_risk": "", "operator_other": "", "estimated_blood": True, "operation_focus": True, "signature_nurse": "", "special_medical": True, "anesthesia_focus": ["其他"], "anesthesia_other": "", "operation_method": "是", "instrument_status": True, "antibacterial_test": True, "signature_anesthetist": ""}, "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "before_anesthesia": {"other": "", "skin_check": "是", "addon_check": [], "basic_check": "是", "blood_check": "否", "mskin_check": "是", "venous_access": "否", "operation_mark": "是", "signature_nurse": "", "allergic_history": "是", "anesthesia_check": "是", "operation_method": "是", "anesthesia_method": "是", "antibacterial_test": "否", "signature_operator": "王豪", "signature_anesthetist": "王豪", "operation_consent_form": "是", "anesthesia_consent_form": "是"}},
+                "双眼角膜胶原交联术-手术风险评估表": {"er": "0分 P1：正常的患者；除局部病变，无系统性疾病", "yi": "0分 I类手术切口(清洁手术)", "san": "0分 T1：手术在3小时内完成", "total": 0, "operator": "", "table_id": "双眼角膜胶原交联术-手术风险评估表", "nnis_score": 0, "table_name": "双眼角膜胶原交联术-手术风险评估表", "is_emergent": "", "unsign_check": "", "wound_infect": "", "wound_status": True, "operation_eye": "", "operation_time": "", "operation_type": ["器管手术"], "signature_nurse": "", "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "signature_operator": "", "signature_anesthetist": ""},
+                "双眼角膜胶原交联术-手术安全核查": {"operator": "", "table_id": "双眼角膜胶原交联术-手术安全核查", "table_name": "双眼角膜胶原交联术-手术安全核查", "operation_eye": "", "operation_time": "", "after_operation": {"other": "", "skin_check": "是", "basic_check": "是", "patient_way": "离院", "operation_mark": "", "pipeline_check": [], "signature_nurse": "", "operation_method": "是", "operation_sample": "是", "operation_supply": "是", "operation_medical": "是", "signature_operator": "", "signature_anesthetist": ""}, "before_operation": {"other": "", "addon_check": "", "basic_check": "是", "nurse_other": "", "estimated_time": True, "operation_mark": "是", "operation_risk": "", "operator_other": "", "estimated_blood": True, "operation_focus": True, "signature_nurse": "", "special_medical": True, "anesthesia_focus": ["其他"], "anesthesia_other": "", "operation_method": "是", "instrument_status": True, "antibacterial_test": True, "signature_anesthetist": ""}, "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "before_anesthesia": {"other": "", "skin_check": "是", "addon_check": [], "basic_check": "是", "blood_check": "否", "mskin_check": "是", "venous_access": "否", "operation_mark": "是", "signature_nurse": "", "allergic_history": "是", "anesthesia_check": "是", "operation_method": "是", "anesthesia_method": "是", "antibacterial_test": "否", "signature_operator": "", "signature_anesthetist": "", "operation_consent_form": "是", "anesthesia_consent_form": "是"}},
                 "晶体植入术前眼部检查": {
                     "eyeExam": {
                         "acd": {
@@ -358,6 +359,20 @@ def query_report_list(register_id):
                         }
                     }
 
+                },
+                "眼视光门诊病历": {
+                            "other_check": {
+                                "addon": {
+                                    "axial_od": merged_dict.get('r_al', ''),
+                                    "axial_os": merged_dict.get('l_al', ''),
+                                    "map_od_c": merged_dict.get('r_dk3', ''),
+                                    "map_od_h": merged_dict.get('r_xk2', ''),
+                                    "map_od_v": merged_dict.get('r_pk1', ''),
+                                    "map_os_c": merged_dict.get('l_dk3', ''),
+                                    "map_os_h": merged_dict.get('l_xk2', ''),
+                                    "map_os_v": merged_dict.get('l_pk1', '')
+                                }
+                            }
                 }
             }
 
@@ -450,6 +465,7 @@ def name_to_pinyin(name: str) -> str:
 
 
 def query_patient_info(key, guahao_id, date_str):
+    start_time = time.time()
     if guahao_id and len(str(guahao_id)) == 9:
         db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                     global_config.DB_DATABASE_GYL)
@@ -462,7 +478,6 @@ def query_patient_info(key, guahao_id, date_str):
         for item in patients:
             item['姓名拼音'] = name_to_pinyin(item['患者姓名'])
         return patients
-
 
     # 查询自主添加的患者
     local_record = []
@@ -539,6 +554,8 @@ def query_patient_info(key, guahao_id, date_str):
 
                 for item in results:
                     item['姓名拼音'] = name_to_pinyin(item['患者姓名'])
+
+                logger.info(f"查询耗时： {time.time() - start_time}")
                 return results[0] if guahao_id else results + local_record
 
     except cx_Oracle.Error as error:
