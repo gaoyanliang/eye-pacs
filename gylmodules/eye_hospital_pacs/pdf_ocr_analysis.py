@@ -633,6 +633,7 @@ def analysis_pdf(file_path):
                         (250, 1360, 560, 1425),
                         (650, 2760, 1220, 2820),
                         (220, 2710, 600, 2770),
+                        (250, 1416, 560, 1470),
                     ]
                     r_ret_str = ""
                     for region in regions:
@@ -652,6 +653,7 @@ def analysis_pdf(file_path):
                         (1330, 1360, 1630, 1425),
                         (1720, 2760, 2240, 2820),
                         (1290, 2710, 1700, 2770),
+                        (1310, 1416, 1630, 1470),
                     ]
                     l_ret_str = ""
                     for region in regions:
@@ -668,10 +670,11 @@ def analysis_pdf(file_path):
                             print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
 
                     def parse_biometry_data(data_string, is_left):
+                        print(data_string)
                         """从字符串中解析AL值和CW-chord值"""
                         # 初始化结果字典
                         # 初始化结果字典
-                        ret = { 'AL': [], 'CW_chord': [], "WTW": []}
+                        ret = { 'AL': [], 'CW_chord': [], "WTW": [], "CCT": []}
 
                         # 支持中英文的AL值正则表达式
                         al_patterns = [
@@ -689,11 +692,15 @@ def analysis_pdf(file_path):
                             r'WTW[：:]\s*(\d+\.\d+)\s*mm',  # 中文冒号: WTW：26.21 mm
                         ]
 
+                        cct_patterns = [
+                            r'CCT[:：]\s*(\d+\.?\d*)'
+                        ]
+
                         # 解析AL值
                         for pattern in al_patterns:
                             al_matches = re.findall(pattern, data_string)
                             for match in al_matches:
-                                ret['AL'].append(float(match))
+                                ret['AL'].append(match)
 
                         # 解析CW-chord值
                         for pattern in cw_patterns:
@@ -705,17 +712,26 @@ def analysis_pdf(file_path):
                         for pattern in wtw_patterns:
                             wtw_matches = re.findall(pattern, data_string)
                             for match in wtw_matches:
-                                ret['WTW'].append(float(match))
+                                ret['WTW'].append(match)
+
+                        # 解析CCT值
+                        for pattern in cct_patterns:
+                            cct_matches = re.findall(pattern, data_string)
+                            for match in cct_matches:
+                                ret['CCT'].append(match)
 
                         als = list(set(ret['AL']))
                         cws = list(set(ret['CW_chord']))
                         wtw = list(set(ret['WTW']))
+                        cct = list(set(ret['CCT']))
                         if is_left:
                             result['l_al'] = als[0] if len(als) >0 else ''
+                            result['l_cct'] = cct[0] if len(cct) >0 else ''
                             result['l_wtw'] = wtw[0] if len(wtw) >0 else ''
                             result['l_cw_chord'] = cws[0] if len(cws) >0 else ''
                         else:
                             result['r_al'] = als[0] if len(als) > 0 else ''
+                            result['r_cct'] = cct[0] if len(cct) > 0 else ''
                             result['r_wtw'] = wtw[0] if len(wtw) > 0 else ''
                             result['r_cw_chord'] = cws[0] if len(cws) > 0 else ''
                         return result
@@ -912,7 +928,7 @@ if __name__ == "__main__":
     start_time = time.time()
     # file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
     file_path = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
-    file_path = r"E:\pdf_share\Master700.pdf"
+
     file_path = r"E:\pdf_share\屈光四图.pdf"
     # file_path = r"E:\test_share1\屈光四图.pdf"
     file_path = r"E:\pdf_share\眼表综合检查报告_20251024112220.pdf"
@@ -921,6 +937,7 @@ if __name__ == "__main__":
     file_path = r"E:\pdf_share\屈光六图.pdf"
     file_path = r"E:\pdf_share\生物力学_20251024172304.pdf"
     file_path = r"E:\pdf_share\角膜地形图_20251024173124.pdf"
+    file_path = r"E:\pdf_share\Master700.pdf"
 
     patient_name, values = analysis_pdf(file_path)
     print(patient_name)

@@ -219,53 +219,21 @@
 #             patient_id = patients[0].get('门诊号')
 #             bind_sql = f" , register_id = '{register_id}', patient_id = '{patient_id}'"
 #
-#
+#AL: 22.36 mm  CW-chord: 0.3 mm @ 57  WTW: 11.4 mm  CCT: 537 μm
+# AL: 22.47 mm  CW-chord: 0.3 mm d 2138°  WTW: 11.4 mm  CCT: 531 μm
+# 2025-10-30 15:08:54.620315 E:\pdf_share\Master700.pdf 解析成功， 耗时 4.63805890083313 s
 
 
 import re
 
-text = "患者姓名：蒋凤翔"
+text = "AL: 22.47 mm  CW-chord: 0.3 mm d 2138°  WTW: 11.4 mm  CCT： 531 μm"
 
-# 方法1：简单提取
-match = re.search(r'患者姓名：\s*(\S+)', text)
+# 直接匹配 CCT: 后面的数字（整数或小数）
+pattern = r'CCT[:：]\s*(\d+\.?\d*)'
+match = re.search(pattern, text)
+
 if match:
-    name = match.group(1)
-    print(f"患者姓名: {name}")
-
-
-# 方法2：更安全的提取（带异常处理）
-def extract_patient_name(text):
-    try:
-        match = re.search(r'患者姓名[：:]\s*([\u4e00-\u9fa5]+)', text)
-        return match.group(1) if match else ""
-    except:
-        return ""
-
-
-# 方法3：支持多种格式
-def robust_name_extraction(text):
-    patterns = [
-        r'患者姓名[：:]\s*([\u4e00-\u9fa5]{2,4})',
-        r'姓名[：:]\s*([\u4e00-\u9fa5]{2,4})',
-        r'[：:]\s*([\u4e00-\u9fa5]{2,4})',
-        r'Patient Name[：:]\s*([A-Za-z\s]+)'
-    ]
-    patterns = [
-        r'[：:]\s*([\u4e00-\u9fa5]{2,4})'
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, text)
-        if match:
-            return match.group(1).strip()
-
-    return ""
-
-
-# 使用示例
-name = robust_name_extraction(text)
-print(f"提取的姓名: '{name}'")
-
-
+    cct_value = match.group(1)
+    print(cct_value)  # 输出: 537
 
 

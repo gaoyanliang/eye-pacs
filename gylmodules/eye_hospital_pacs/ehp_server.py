@@ -304,15 +304,17 @@ def query_report_list(register_id):
                     }
                 },
                 "硬性角膜接触镜验配病历": {
+                    "axis_od": merged_dict.get('r_al', ''),
+                    "axis_os": merged_dict.get('l_al', ''),
                     "corneal_para": {
                         "inner_od": merged_dict.get('r_cd', ''),
                         "inner_os": merged_dict.get('l_cd', ''),
                         "evalue_od": merged_dict.get('r_pe', ''),
                         "evalue_os": merged_dict.get('l_pe', ''),
-                        "diameter_od": "",
-                        "diameter_os": "",
-                        "thickness_od": "",
-                        "thickness_os": "",
+                        "diameter_od": merged_dict.get('r_wtw', ''),
+                        "diameter_os": merged_dict.get('l_wtw', ''),
+                        "thickness_od": merged_dict.get('r_cct', ''),
+                        "thickness_os": merged_dict.get('l_cct', ''),
                         "curvature_k1_od": merged_dict.get('r_pk1', ''),
                         "curvature_k1_os": merged_dict.get('l_pk1', ''),
                         "curvature_k2_od": merged_dict.get('r_xk2', ''),
@@ -488,7 +490,7 @@ def query_patient_info(key, guahao_id, date_str):
         query_sql = (f"select register_id 挂号id, register_id 病人id, register_id 门诊号, name AS 患者姓名, "
                      f"gender 性别, age 年龄, visit_dept AS 就诊科室, doc_name AS 医生姓名, last_visit_time as 就诊日期, "
                      f"birth_date as 出生日期, phone_num 联系电话, id_card_no 身份证号  "
-                     f"from nsyy_gyl.ehp_patients where visit_date = '{date_str}' {condition_sql}" )
+                     f"from nsyy_gyl.ehp_patients where visit_date = '{date_str}' and is_deleted = 0 {condition_sql}" )
         local_record = db.query_all(query_sql)
         del db
         if not local_record:

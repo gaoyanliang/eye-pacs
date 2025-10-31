@@ -167,7 +167,7 @@ pdf_file = r"E:\pdf_share\屈光四图.pdf"
 pdf_file = r"E:\test_share1\4.pdf"
 pdf_file = r"E:\pdf_share\0.pdf"
 pdf_file = r"E:\pdf_share\L P+C.pdf"
-pdf_file = r"E:\pdf_share\角膜内皮细胞报告_20251024173204.pdf"
+pdf_file = r"E:\pdf_share\Master700.pdf"
 
 
 output_directory = "."  # 替换为你的输出目录
@@ -236,6 +236,12 @@ coordinates = [[1110, 2400], [1580, 2400], [1580, 2600], [1110, 2600]]  # cd2
 # coordinates = [[220, 2710], [600, 2710], [600, 2770], [220, 2770]]
 # # OS WTW
 # coordinates = [[1290, 2710], [1700, 2710], [1700, 2770], [1290, 2770]]
+# # OD CCT
+coordinates = [[250, 1416], [560, 1416], [560, 1470], [250, 1470]]
+# # OS CCT
+coordinates = [[1310, 1416], [1630, 1416], [1630, 1470], [1310, 1470]]
+
+
 
 # 眼表综合检查报告
 # coordinates = [[50, 310], [500, 310], [500, 390], [50, 390]]   # 患者姓名
@@ -260,7 +266,7 @@ coordinates = [[1110, 2400], [1580, 2400], [1580, 2600], [1110, 2600]]  # cd2
 # coordinates = [[1150, 50], [1600, 50], [1600, 115], [1150, 115]]   # 患者姓名
 
 
-annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
+annotated_image = draw_rectangle_on_image(saved_jpgs[3], coordinates, "annotated.jpg")
 
 
 def process_pdf_with_orientation(pdf_path):
