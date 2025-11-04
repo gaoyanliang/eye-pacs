@@ -79,8 +79,8 @@ def query_history_reports():
 @ehp_system.route('/bind_report', methods=['POST', 'GET'])
 @api_response
 def bind_report(json_data):
-    return ehp_server.bind_report(json_data.get('report_id'), json_data.get('register_id', ''),
-                                  json_data.get('patient_id', ''))
+    return ehp_server.bind_report(json_data.get('report_id'), json_data.get('patient_id', ''),
+                                  json_data.get('register_id', ''))
 
 
 @ehp_system.route('/place_on_file', methods=['POST', 'GET'])
@@ -138,5 +138,7 @@ def monitor_task():
 @ehp_system.route('/patient_info', methods=['POST', 'GET'])
 @api_response
 def patient_info(json_data):
-    return ehp_server.query_patient_info(json_data.get('key', ''),
+    patient_list = ehp_server.query_patient_info(json_data.get('key', ''),
                                          json_data.get('guahao_id', ''), json_data.get('date_str', ''))
+    sorted_patient_list = sorted(patient_list, key=lambda x: x['就诊日期'].strftime("%Y-%m-%d %H:%M:%S"))
+    return sorted_patient_list

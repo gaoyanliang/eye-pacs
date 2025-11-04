@@ -251,7 +251,7 @@ def query_report_list(register_id):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     report_list = db.query_all(f"SELECT *, YEAR(report_time) as year FROM nsyy_gyl.ehp_reports where register_id = '{register_id}' "
-                               f"or ((register_id is null or register_id = '') and  DATE(report_time) = CURRENT_DATE())")
+                               f"or ((register_id is null or register_id = '') and  DATE(report_time) = CURRENT_DATE()) order by report_time")
     del db
 
     merged_dict = {}
@@ -273,9 +273,9 @@ def query_report_list(register_id):
                         'bind_report': report_group,
                         'other_report': other_report,
                     },
-                "手术安全核查表": ehp_config.verification_form,
-                "屈光手术风险评估": ehp_config.risk_assessment,
-                "术前眼部检查": {
+                "屈光手术安全核查表": ehp_config.verification_form,
+                "屈光手术风险评估表": ehp_config.risk_assessment,
+                "屈光手术术前眼部检查": {
                     "corneal_thick": {
                         "od": merged_dict.get('r_thinnest_point', ''),
                         "os": merged_dict.get('l_thinnest_point', '')
@@ -339,7 +339,7 @@ def query_report_list(register_id):
                 },
                 "双眼角膜胶原交联术-手术风险评估表": {"er": "0分 P1：正常的患者；除局部病变，无系统性疾病", "yi": "0分 I类手术切口(清洁手术)", "san": "0分 T1：手术在3小时内完成", "total": 0, "operator": "", "table_id": "双眼角膜胶原交联术-手术风险评估表", "nnis_score": 0, "table_name": "双眼角膜胶原交联术-手术风险评估表", "is_emergent": "", "unsign_check": "", "wound_infect": "", "wound_status": True, "operation_eye": "", "operation_time": "", "operation_type": ["器管手术"], "signature_nurse": "", "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "signature_operator": "", "signature_anesthetist": ""},
                 "双眼角膜胶原交联术-手术安全核查": {"operator": "", "table_id": "双眼角膜胶原交联术-手术安全核查", "table_name": "双眼角膜胶原交联术-手术安全核查", "operation_eye": "", "operation_time": "", "after_operation": {"other": "", "skin_check": "是", "basic_check": "是", "patient_way": "离院", "operation_mark": "", "pipeline_check": [], "signature_nurse": "", "operation_method": "是", "operation_sample": "是", "operation_supply": "是", "operation_medical": "是", "signature_operator": "", "signature_anesthetist": ""}, "before_operation": {"other": "", "addon_check": "", "basic_check": "是", "nurse_other": "", "estimated_time": True, "operation_mark": "是", "operation_risk": "", "operator_other": "", "estimated_blood": True, "operation_focus": True, "signature_nurse": "", "special_medical": True, "anesthesia_focus": ["其他"], "anesthesia_other": "", "operation_method": "是", "instrument_status": True, "antibacterial_test": True, "signature_anesthetist": ""}, "operation_method": [], "record_detail_id": None, "anesthesia_method": "", "before_anesthesia": {"other": "", "skin_check": "是", "addon_check": [], "basic_check": "是", "blood_check": "否", "mskin_check": "是", "venous_access": "否", "operation_mark": "是", "signature_nurse": "", "allergic_history": "是", "anesthesia_check": "是", "operation_method": "是", "anesthesia_method": "是", "antibacterial_test": "否", "signature_operator": "", "signature_anesthetist": "", "operation_consent_form": "是", "anesthesia_consent_form": "是"}},
-                "晶体植入术前眼部检查": {
+                "晶体植入术前眼部检查和晶体信息": {
                     "eyeExam": {
                         "acd": {
                             "od": merged_dict.get('r_depth', ''),
@@ -557,11 +557,11 @@ def query_patient_info(key, guahao_id, date_str):
                 for item in results:
                     item['姓名拼音'] = name_to_pinyin(item['患者姓名'])
 
-                logger.info(f"查询耗时： {time.time() - start_time}")
+                # logger.info(f"查询耗时： {time.time() - start_time}")
                 return results[0] if guahao_id else results + local_record
 
     except cx_Oracle.Error as error:
-        print(f"数据库查询出错: {error}")
+        print(f"数据库查询出错: {date_str} {error}")
         return []
     except Exception as e:
         print(f"发生错误: {e}")

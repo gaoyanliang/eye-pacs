@@ -163,6 +163,7 @@ def process_file(src_rel_path, retry_count=0):
                 new_filename = f"Master700_{basename}{ext}"
                 machine = "蔡司Master700"
 
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 移动 {filename} 到 {new_filename}")
         # 获取当天日期目录
         dated_dir = get_dated_subdir()
         # 目标路径（保持原始目录结构）

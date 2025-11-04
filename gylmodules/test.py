@@ -237,3 +237,85 @@ if match:
     print(cct_value)  # 输出: 537
 
 
+
+def query_patient_info(date_str):
+
+    # 查询当日所有挂号记录
+    sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
+        a.执行人 AS 医生姓名, a.发生时间 as 就诊日期, TO_CHAR(t2.出生日期, 'YYYY/MM/DD') as 出生日期, t2.家庭电话 联系电话, t2.身份证号 , t2.家庭地址 现住址
+    FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id JOIN 病人信息 t2 ON a.病人id = t2.病人id
+    WHERE TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') AND a.记录状态 = 1"""
+    params = {}
+    sql = """SELECT t.id                                                            挂号ID, \
+                    t.no, \
+                    t.门诊号, \
+                    t2.就诊卡号, \
+                    t2.住院号                                                       病案号, \
+                    t.姓名                             AS                           患者姓名, \
+                    t.性别,
+                    TO_CHAR(t2.出生日期, 'YYYY/MM/DD') as                           出生日期, \
+                    t2.婚姻状况, \
+                    t2.国籍, \
+                    t2.民族, \
+                    '身份证'                                                        证件类型, \
+                    t2.身份证号                                                     证件号码, \
+                    t2.家庭地址                                                     现住址, \
+                    t2.家庭电话                                                     联系电话, \
+                    t.登记时间                                                      挂号时间, \
+                    t.登记时间                                                      报道时间, \
+                    t.执行时间                                                      就诊时间, \
+                    fy.执行部门                                                     就诊科室, \
+                    t.执行人, \
+                    ry.专业技术职务                                                 职称,
+                    CASE WHEN fy.执行部门 LIKE '%急诊%' THEN '急诊' ELSE '门诊' END 就诊类型,
+                    DECODE(t.复诊, 1, '是', '否')                                   是否复诊
+             FROM 病人挂号记录 t \
+                      JOIN 病人信息 t2 ON t.病人id = t2.病人id \
+                      LEFT JOIN 人员表 ry ON ry.姓名 = t.执行人 \
+                      LEFT JOIN (SELECT t10.病人id, t10.no, t11.名称 执行部门 \
+                                 FROM 门诊费用记录 t10 \
+                                          JOIN 部门表 t11 ON t10.执行部门id = t11.id \
+                                 WHERE 记录性质 = 4 \
+                                   AND 记录状态 = 1) fy ON t.病人id = fy.病人id AND t.no = fy.no \
+             WHERE t.id = 2511030008 \
+          """
+
+    db_config = {'user': 'ZLHIS', 'password': "DAE42", 'dsn': '192.168.190.254:1521/orcl'}
+
+    try:
+        import cx_Oracle
+        # 建立数据库连接
+        with cx_Oracle.connect(**db_config) as connection:
+            # 创建游标
+            with connection.cursor() as cursor:
+                # 执行查询
+                cursor.execute(sql, params)
+
+                # 获取列名
+                columns = [col[0].lower() for col in cursor.description]  # 统一转为小写
+
+                # 获取所有结果并转换为字典列表
+                results = []
+                for row in cursor:
+                    # 处理NULL值，将cx_Oracle的NULL转为Python的None
+                    row_dict = {}
+                    for i, col in enumerate(columns):
+                        row_dict[col] = row[i] if row[i] is not None else None
+                    results.append(row_dict)
+
+
+                # logger.info(f"查询耗时： {time.time() - start_time}")
+                return results
+
+    except cx_Oracle.Error as error:
+        print(f"数据库查询出错: {date_str} {error}")
+        return []
+    except Exception as e:
+        print(f"发生错误: {e}")
+        return []
+
+
+data = query_patient_info("2025-11-03")
+for d in data:
+    print(d)
+

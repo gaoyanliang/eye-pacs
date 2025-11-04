@@ -670,7 +670,7 @@ def analysis_pdf(file_path):
                             print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
 
                     def parse_biometry_data(data_string, is_left):
-                        print(data_string)
+                        # print(data_string)
                         """从字符串中解析AL值和CW-chord值"""
                         # 初始化结果字典
                         # 初始化结果字典
