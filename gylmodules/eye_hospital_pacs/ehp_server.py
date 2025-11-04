@@ -467,6 +467,8 @@ def name_to_pinyin(name: str) -> str:
 
 
 def query_patient_info(key, guahao_id, date_str):
+    if not date_str:
+        raise Exception('日期不能为空')
     start_time = time.time()
     if guahao_id and len(str(guahao_id)) == 9:
         db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
