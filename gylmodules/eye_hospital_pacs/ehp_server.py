@@ -507,7 +507,8 @@ def query_patient_info(key, guahao_id, date_str):
         sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
                 a.执行人 AS 医生姓名, a.发生时间 as 就诊日期, TO_CHAR(c.出生日期, 'YYYY/MM/DD') as 出生日期, c.家庭电话 联系电话, c.身份证号, c.家庭地址 现住址
                 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
-                join 病人信息 c on a.病人id = c.病人id WHERE a.记录状态 = 1 and (c.姓名 like '%{key}%' or 
+                join 病人信息 c on a.病人id = c.病人id WHERE TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') 
+                and a.记录状态 = 1 and (c.姓名 like '%{key}%' or 
                 c.身份证号 like '%{key}%' or c.家庭电话 like '%{key}%') order by a.发生时间 desc """
         params = {}
     else:

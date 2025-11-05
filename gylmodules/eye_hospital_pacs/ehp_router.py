@@ -140,5 +140,6 @@ def monitor_task():
 def patient_info(json_data):
     patient_list = ehp_server.query_patient_info(json_data.get('key', ''),
                                          json_data.get('guahao_id', ''), json_data.get('date_str', ''))
-    sorted_patient_list = sorted(patient_list, key=lambda x: x['就诊日期'].strftime("%Y-%m-%d %H:%M:%S"))
-    return sorted_patient_list
+    if not json_data.get('guahao_id', ''):
+        patient_list = sorted(patient_list, key=lambda x: x['就诊日期'].strftime("%Y-%m-%d %H:%M:%S"))
+    return patient_list
