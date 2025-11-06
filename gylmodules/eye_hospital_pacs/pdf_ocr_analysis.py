@@ -190,7 +190,10 @@ class OCRProcessor:
         # 二值化处理
         _, binary = cv2.threshold(sharpened, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-        return binary
+        # 降噪处理
+        denoised = cv2.medianBlur(binary, 3)
+
+        return denoised
 
 
     def ocr_image(self, image_input: Union[str, np.ndarray, bytes], language: str = 'ch', merge_level: int = 0) -> Dict:
