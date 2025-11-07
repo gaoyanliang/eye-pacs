@@ -189,9 +189,9 @@ class OCRProcessor:
         _, binary = cv2.threshold(sharpened, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         # 降噪处理
-        deionised = cv2.medianBlur(binary, 3)
+        # deionised = cv2.medianBlur(binary, 3)
 
-        return deionised
+        return binary
 
     """优化版OCR方法，merge_level 默认设为 0 以保留原始顺序"""
     def ocr_image(self, image_input: Union[str, np.ndarray, bytes], language: str = 'ch', merge_level: int = 0) -> Dict:
@@ -521,6 +521,10 @@ def analysis_pdf(file_path):
                         ret_data[key] = " ".join(all_texts)
                     except Exception as e:
                         print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+
+                match = re.search(r'[：:]\s*([\u4e00-\u9fa5]{2,4}|[A-Za-z\s]+)', ret_data.get("name", ""))
+                if match:
+                    ret_data['name'] = match.group(1).strip()
                 ret_data['name'] = (ret_data.get("name", "").replace(' ', '').replace(',', '')
                                     .replace('，', '').replace('.', '').replace('。', ''))
 
@@ -561,6 +565,10 @@ def analysis_pdf(file_path):
                     ret_data[key] = " ".join(all_texts)
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+
+            match = re.search(r'[：:]\s*([\u4e00-\u9fa5]{2,4}|[A-Za-z\s]+)', ret_data.get("name", ""))
+            if match:
+                ret_data['name'] = match.group(1).strip()
             ret_data['name'] = ret_data.get("name", "").replace(' ', '').replace(',', '') \
                 .replace('，', '').replace('.', '').replace('。', '')
 
@@ -1310,16 +1318,16 @@ if __name__ == "__main__":
     file_path = r"E:\pdf_share\角膜内皮细胞报告22.pdf"
     file_path = r"E:\pdf_share\角膜内皮细胞报告23.pdf"
     file_path = r"E:\pdf_share\角膜内皮细胞报告211.pdf"
-    file_path = r"E:\pdf_share\眼表综合检查报告41.pdf"
-    file_path = r"E:\pdf_share\眼表综合检查报告42.pdf"
-    file_path = r"E:\pdf_share\眼表综合检查报告43.pdf"
-    file_path = r"E:\pdf_share\眼表综合检查报告44.pdf"
-    file_path = r"E:\pdf_share\角膜地形图31.pdf"
-    file_path = r"E:\pdf_share\角膜地形图32.pdf"
-    file_path = r"E:\pdf_share\图像总览53.pdf"
+    # file_path = r"E:\pdf_share\眼表综合检查报告41.pdf"
+    # file_path = r"E:\pdf_share\眼表综合检查报告42.pdf"
+    # file_path = r"E:\pdf_share\眼表综合检查报告43.pdf"
+    # file_path = r"E:\pdf_share\眼表综合检查报告44.pdf"
+    # file_path = r"E:\pdf_share\角膜地形图31.pdf"
+    # file_path = r"E:\pdf_share\角膜地形图32.pdf"
+    # file_path = r"E:\pdf_share\图像总览53.pdf"
     file_path = r"E:\pdf_share\比较两次检查54.pdf"
-    file_path = r"E:\pdf_share\生物力学-横版.pdf"
-    file_path = r"E:\pdf_share\生物力学-竖版.pdf"
+    # file_path = r"E:\pdf_share\生物力学-横版.pdf"
+    # file_path = r"E:\pdf_share\生物力学-竖版.pdf"
     # file_path = r"E:\pdf_share\眼底照片.pdf"
     # file_path = r"E:\pdf_share\Master700.pdf"
     # file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
