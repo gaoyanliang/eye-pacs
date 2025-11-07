@@ -1,7 +1,9 @@
 # pdf 文件解析，定时执行
 
 import json
+import re
 
+from pathlib import Path
 import numpy as np
 from datetime import datetime
 from PIL import Image
@@ -11,9 +13,7 @@ import io
 import os
 from typing import Union, List, Dict, Literal
 from pdf2image import convert_from_path
-import re
 import cv2
-from typing import Optional
 
 from gylmodules import global_config
 from gylmodules.eye_hospital_pacs import ehp_server, ehp_config
@@ -329,32 +329,11 @@ def get_pdf_orientation(image_path: str) -> Literal['portrait', 'landscape', 'sq
         return 'unknown'
 
 
-"""从文件名中提取患者名字 格式: Master700_数字_姓_名_时间戳.pdf"""
-
-
-def extract_patient_name(filename):
-    try:
-        import re
-        # 匹配中文姓名部分（至少2个中文字符，用下划线分隔）
-        pattern = r'_([\u4e00-\u9fff]+)_([\u4e00-\u9fff]+)_'
-        match = re.search(pattern, filename)
-
-        if match:
-            surname = match.group(1)  # 姓
-            given_name = match.group(2)  # 名
-            return f"{surname}{given_name}"
-        else:
-            return ""
-    except:
-        return ""
-
-
 """解析判断报告类型"""
 
 
 def analysis_report_types(saved_jpgs, processor):
     img = Image.open(saved_jpgs[0])
-    index = 1
     for name, info in ehp_config.report_logo.items():
         region = info.get('logo')
         left, top, right, bottom = region
@@ -372,12 +351,11 @@ def analysis_report_types(saved_jpgs, processor):
                 # 增强型扩张分析
                 return name, info.get('machine')
             elif name.__contains__("角膜地形图") and (
-                    joined_text.__contains__("南阳市") or joined_text.__contains__("眼科医院")):
+                    joined_text.__contains__("南阳市") or joined_text.__contains__("南石眼科医院")):
                 # 南阳市南石眼科医院
                 return name, info.get('machine')
             elif name.__contains__("角膜内皮细胞报告") and (
-                    joined_text.__contains__("角膜内皮") or joined_text.__contains__("南阳瑞视")
-                    or joined_text.__contains__("眼科")):
+                    joined_text.__contains__("角膜内皮") or joined_text.__contains__("细胞报告")):
                 # 南阳瑞视眼科医院角膜内皮细胞报告
                 return name, info.get('machine')
             elif name.__contains__("眼表综合检查报告") and (
@@ -393,7 +371,7 @@ def analysis_report_types(saved_jpgs, processor):
                 # 图像总览
                 return name, info.get('machine')
             elif name.__contains__("生物力学") and (
-                    joined_text.__contains__("name") or joined_text.__contains__("Name")):
+                    joined_text.__contains__("Corvis ST") or joined_text.__contains__("Corvis") or joined_text.__contains__("ST")):
                 return name, info.get('machine')
             elif name.__contains__("眼底照片") and (
                     joined_text.__contains__("机构") or joined_text.__contains__("机") or joined_text.__contains__("构")):
@@ -422,19 +400,17 @@ def analysis_pdf(file_path):
         return None, {}
     try:
         start_time = time.time()
-        file_name = os.path.basename(file_path)
         # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
         saved_jpgs = pdf_to_jpg(file_path)
         to_jpg_time = time.time() - start_time
 
         # 解析图片，识别患者姓名 & 提取数据
-        file_name = os.path.basename(file_path)
         processor = OCRProcessor()
 
         # 解析并判断文件类型
         ret_data = {}
         analy_name, machine = analysis_report_types(saved_jpgs, processor)
-        final_file_name = analy_name
+        final_file_name = analy_name if analy_name else Path(file_path).stem
         if analy_name.__contains__('屈光四图'):
             # 区分横版/竖版
             if analy_name.__contains__('竖'):
@@ -463,25 +439,25 @@ def analysis_pdf(file_path):
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
 
-            ret_data['name'] = ret_data.get("xing", "") + ret_data.get("ming", "")
+            ret_data['name'] = ret_data.pop("xing", "") + ret_data.pop("ming", "")
             ret_data['name'] = ret_data['name'].replace(' ', '').replace(',', '')\
                 .replace('，', '').replace('.', '').replace('。', '')
             if ret_data.get("eye").__contains__('左眼') or ret_data.get("eye").__contains__('左'):
                 final_file_name = f"{final_file_name}-左眼"
-                ret_data['l_k1'] = ret_data.get("k1")
-                ret_data['l_k2'] = ret_data.get("k2")
-                ret_data['l_rm'] = ret_data.get("rm")
-                ret_data['l_thinnest_point'] = ret_data.get("thinnest_point")
-                ret_data['l_depth'] = ret_data.get("depth")
-                ret_data['l_distance'] = ret_data.get("distance")
+                ret_data['l_k1'] = ret_data.pop("k1")
+                ret_data['l_k2'] = ret_data.pop("k2")
+                ret_data['l_rm'] = ret_data.pop("rm")
+                ret_data['l_thinnest_point'] = ret_data.pop("thinnest_point")
+                ret_data['l_depth'] = ret_data.pop("depth")
+                ret_data['l_distance'] = ret_data.pop("distance")
             else:
                 final_file_name = f"{final_file_name}-右眼"
-                ret_data['r_k1'] = ret_data.get("k1")
-                ret_data['r_k2'] = ret_data.get("k2")
-                ret_data['r_rm'] = ret_data.get("rm")
-                ret_data['r_thinnest_point'] = ret_data.get("thinnest_point")
-                ret_data['r_depth'] = ret_data.get("depth")
-                ret_data['r_distance'] = ret_data.get("distance")
+                ret_data['r_k1'] = ret_data.pop("k1")
+                ret_data['r_k2'] = ret_data.pop("k2")
+                ret_data['r_rm'] = ret_data.pop("rm")
+                ret_data['r_thinnest_point'] = ret_data.pop("thinnest_point")
+                ret_data['r_depth'] = ret_data.pop("depth")
+                ret_data['r_distance'] = ret_data.pop("distance")
         elif analy_name.__contains__('屈光六图'):
             # 区分横版/竖版
             if analy_name.__contains__('竖'):
@@ -501,7 +477,7 @@ def analysis_pdf(file_path):
                     ret_data[key] = " ".join(all_texts)
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
-            ret_data['name'] = ret_data.get("xing", "") + ret_data.get("ming", "")
+            ret_data['name'] = ret_data.pop("xing", "") + ret_data.pop("ming", "")
             ret_data['name'] = ret_data['name'].replace(' ', '').replace(',', '')\
                 .replace('，', '').replace('.', '').replace('。', '')
             if ret_data['eye'].__contains__('左眼') or ret_data['eye'].__contains__('左'):
@@ -527,34 +503,39 @@ def analysis_pdf(file_path):
                 if is_panoramic:
                     regions = {
                         "eye_up": (320, 710, 485, 780), "eye_down": (320, 2010, 485, 2080), "name": (780, 430, 1160, 550),
-                        "cd1": (1110, 1120, 1580, 1310), "cd2": (1110, 2400, 1580, 2600)
+                        "cd1": (1110, 1210, 1580, 1310), "cd2": (1110, 2500, 1580, 2600)
                     }
                 else:
                     regions = {
                         "eye_up": (320, 710, 485, 780), "eye_down": (320, 2010, 485, 2080), "name": (780, 430, 1160, 550),
-                        "cd1": (1250, 1080, 1650, 1280), "cd2": (1250, 2380, 1650, 2580)
+                        "cd1": (1250, 1180, 1650, 1280), "cd2": (1250, 2480, 1650, 2580)
                     }
-                    for key, region in regions.items():
-                        left, top, right, bottom = region
-                        crop_box = (left, top, right, bottom)
-                        try:
-                            img = Image.open(saved_jpgs[0])
-                            roi = img.crop(crop_box)
-                            ocr_result = processor.ocr_image(np.array(roi))
-                            all_texts = [item["text"] for item in ocr_result.get("data", [])]
-                            ret_data[key] = " ".join(all_texts)
-                        except Exception as e:
-                            print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
-                    final_name = ret_data.get("name", "")
-                    final_name = final_name.replace(' ', '').replace(',', '').replace('，', '').replace('.', '').replace('。', '')
-                    if ret_data.get('eye_up', '').__contains__("OD") or ret_data.get('eye_up', '').__contains__("od"):
-                        ret_data['r_d1'] = ret_data.get('d1', '')
-                    else:
-                        ret_data['l_d1'] = ret_data.get('d1', '')
-                    if ret_data.get('eye_down', '').__contains__("OS") or ret_data.get('eye_down', '').__contains__("os"):
-                        ret_data['r_d2'] = ret_data.get('d2', '')
-                    else:
-                        ret_data['l_d2'] = ret_data.get('d2', '')
+                for key, region in regions.items():
+                    left, top, right, bottom = region
+                    crop_box = (left, top, right, bottom)
+                    try:
+                        img = Image.open(saved_jpgs[0])
+                        roi = img.crop(crop_box)
+                        ocr_result = processor.ocr_image(np.array(roi))
+                        all_texts = [item["text"] for item in ocr_result.get("data", [])]
+                        ret_data[key] = " ".join(all_texts)
+                    except Exception as e:
+                        print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
+                ret_data['name'] = (ret_data.get("name", "").replace(' ', '').replace(',', '')
+                                    .replace('，', '').replace('.', '').replace('。', ''))
+
+                cd_matches = re.findall(r'CD[：:\s]*(\d+)', ret_data.get('cd1', ''), re.IGNORECASE)
+                ret_data['cd1'] = cd_matches[0]
+                cd_matches = re.findall(r'CD[：:\s]*(\d+)', ret_data.get('cd2', ''), re.IGNORECASE)
+                ret_data['cd2'] = cd_matches[0]
+                if ret_data.get('eye_up', '').__contains__("OD") or ret_data.get('eye_up', '').__contains__("od") or ret_data.get('eye_up', '').__contains__("R"):
+                    ret_data['r_cd1'] = ret_data.pop('cd1', '')
+                else:
+                    ret_data['l_cd1'] = ret_data.pop('cd1', '')
+                if ret_data.get('eye_down', '').__contains__("OS") or ret_data.get('eye_down', '').__contains__("os") or ret_data.get('eye_down', '').__contains__("L"):
+                    ret_data['l_cd2'] = ret_data.pop('cd2', '')
+                else:
+                    ret_data['r_cd2'] = ret_data.pop('cd2', '')
         elif analy_name.__contains__('眼表综合检查报告') or analy_name.__contains__('角膜地形图'):
             if analy_name.__contains__('眼表综合检查报告'):
                 regions = {
@@ -582,6 +563,20 @@ def analysis_pdf(file_path):
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
             ret_data['name'] = ret_data.get("name", "").replace(' ', '').replace(',', '') \
                 .replace('，', '').replace('.', '').replace('。', '')
+
+            if 'r_pk1' in ret_data:
+                match = re.search(r'([\d.]+)屈光度', ret_data.get('r_pk1', ''))
+                ret_data['r_pk1'] = match.group(1) if match else ret_data.get('r_pk1', '')
+                match = re.search(r'([\d.]+)屈光度', ret_data.get('l_pk1', ''))
+                ret_data['l_pk1'] = match.group(1) if match else ret_data.get('l_pk1', '')
+                match = re.search(r'([\d.]+)屈光度', ret_data.get('r_xk2', ''))
+                ret_data['r_xk2'] = match.group(1) if match else ret_data.get('r_xk2', '')
+                match = re.search(r'([\d.]+)屈光度', ret_data.get('l_xk2', ''))
+                ret_data['l_xk2'] = match.group(1) if match else ret_data.get('l_xk2', '')
+                match = re.search(r'([\d.]+)\s*@', ret_data.get('r_pe', ''))
+                ret_data['r_pe'] = match.group(1) if match else ret_data.get('r_pe', '')
+                match = re.search(r'([\d.]+)\s*@', ret_data.get('l_pe', ''))
+                ret_data['l_pe'] = match.group(1) if match else ret_data.get('l_pe', '')
         elif analy_name.__contains__('图像总览') or analy_name.__contains__('比较两次检查'):
             if analy_name.__contains__('比较两次检查'):
                 regions = {
@@ -686,10 +681,24 @@ def analysis_pdf(file_path):
                         print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
                 ret_data['name'] = ret_data.get('name', '').replace(' ', '').replace(',', '') \
                     .replace('，', '').replace('.', '').replace('。', '')
+
+                if 'l_cw_chord' in ret_data:
+                    match = re.search(r'([\d.]+)\s*mm\s*(?:@|\d*\s*)?\s*(\d+)°', ret_data.get('l_cw_chord', ''))
+                    if match:
+                        num1 = match.group(1) if match.group(1) else ''
+                        num2 = match.group(2) if match.group(2) else ''
+                        ret_data['l_cw_chord'] = f"{num1} mm @ {num2}°"
+                if 'r_cw_chord' in ret_data:
+                    match = re.search(r'([\d.]+)\s*mm\s*(?:@|\d*\s*)?\s*(\d+)°', ret_data.get('r_cw_chord', ''))
+                    if match:
+                        num1 = match.group(1) if match.group(1) else ''
+                        num2 = match.group(2) if match.group(2) else ''
+                        ret_data['r_cw_chord'] = f"{num1} mm @ {num2}°"
+
         elif analy_name.__contains__('阿玛仕手术报告'):
             regions = {
                     "xing": (1310, 555, 1600, 625), "ming": (880, 555, 1200, 625), "eye": (300, 500, 430, 630),
-                    "p_k1": (550, 1525, 680, 1560), "p_k2": (550, 1587, 680, 1623), "diopter": (680, 1360, 1330, 1430),
+                    "p_k1": (680, 960, 1110, 1025), "p_k2": (680, 1025, 1110, 1090), "diopter": (680, 1360, 1330, 1430),
                     "light_area": (1925, 710, 2380, 780), "cut_depth": (1925, 940, 2380, 1020),
                     "cut_time": (700, 1560, 1200, 1625)
                 }
@@ -704,21 +713,33 @@ def analysis_pdf(file_path):
                     ret_data[key] = " ".join(all_texts)
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {region} 失败: {e}')
-            ret_data['name'] = ret_data.get('xing', '') + ret_data.get('ming', '')
+            ret_data['name'] = ret_data.pop('xing', '') + ret_data.pop('ming', '')
             ret_data['name'] = ret_data.get('name', '').replace(' ', '').replace(',', '') \
                 .replace('，', '').replace('.', '').replace('。', '')
             eye_type = "os"
             if ret_data.get('eye_type', '').__contains__('OD') or ret_data.get('eye_type', '').__contains__('od'):
                 eye_type = "od"
-            ret_data[f'corneal_curvate_{eye_type}'] = ret_data.get('p_k1', '') + " " + ret_data.get('p_k2', '')
-            ret_data[f'diopter_{eye_type}'] = ret_data.get('diopter', '')
-            ret_data[f'light_area_{eye_type}'] = ret_data.get('light_area', '')
-            ret_data[f'cut_depth_{eye_type}'] = ret_data.get('cut_depth', '')
-            ret_data[f'cut_time_{eye_type}'] = ret_data.get('cut_time', '')
-        else:
-            final_file_name = file_name
-            machine = "未收录设备"
 
+            # 提取数字部分（包括小数和整数）
+            numbers = re.findall(r'\d+(?:[.,]\d+)?', ret_data.get('p_k1', ''))
+            if len(numbers) > 1:
+                ret_data['p_k1'] = f"{numbers[0]}D @ {numbers[-1]}°"
+
+            numbers = re.findall(r'\d+(?:[.,]\d+)?', ret_data.get('p_k2', ''))
+            if len(numbers) > 1:
+                ret_data['p_k2'] = f"{numbers[0]}D @ {numbers[-1]}°"
+
+            ret_data[f'corneal_curvate_{eye_type}'] = ret_data.pop('p_k1', '') + " " + ret_data.pop('p_k2', '')
+            ret_data[f'diopter_{eye_type}'] = ret_data.pop('diopter', '')
+            ret_data[f'light_area_{eye_type}'] = ret_data.pop('light_area', '')
+            ret_data[f'cut_depth_{eye_type}'] = ret_data.pop('cut_depth', '')
+            ret_data[f'cut_time_{eye_type}'] = ret_data.pop('cut_time', '')
+        else:
+           print(f"{datetime.now()} {file_path} 暂不支持解析")
+    except Exception as e:
+        print(f"{datetime.now()} {file_path} 解析报告异常 {e}")
+
+    print(f"{datetime.now()} {file_path} 解析报告成功, to-jpg 耗时 {to_jpg_time}, 总耗时 {time.time() - start_time}")
     return final_file_name, machine, ret_data
 
 
@@ -1250,17 +1271,17 @@ def regularly_parsing_eye_report():
                                f"WHERE report_value is null ORDER BY report_time limit 5")
 
     try:
-        value_list = []
         for report in report_list:
             file_path = report.get('report_addr').replace('&', '/')
             if not os.path.exists(file_path) and not str(file_path).endswith(".pdf") :
                 continue
 
-            patient_name, values = analysis_pdf(file_path)
+            final_file_name, machine, values = analysis_pdf(file_path)
+            patient_name = values.get('name', '')
             if not values:
                 values = {"res": "analysis failed"}
 
-            report_name = report.get('report_name')
+            report_name = f"{final_file_name}-{patient_name}.pdf"
             report_value = json.dumps(values, ensure_ascii=False, default=str) if values else ''
 
             bind_sql = ""
@@ -1271,7 +1292,7 @@ def regularly_parsing_eye_report():
                     patient_id = patients[0].get('门诊号')
                     bind_sql = f" , register_id = '{register_id}', patient_id = '{patient_id}'"
             db.execute(f"UPDATE nsyy_gyl.ehp_reports SET report_name = '{report_name}', "
-                       f"report_value = '{report_value}' {bind_sql} "
+                       f"report_value = '{report_value}', report_machine = '{machine}' {bind_sql} "
                        f"WHERE report_id = {report.get('report_id')}", need_commit=True)
     except Exception as e:
         del db
@@ -1281,22 +1302,37 @@ def regularly_parsing_eye_report():
 
 if __name__ == "__main__":
     start_time = time.time()
-    # file_path = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OD_11092025_110127_4 Maps Refr_20250911161631.pdf"
-    file_path = r"C:\Users\Administrator\Desktop\Master700_1918372191_白_雪_20190801152407.pdf"
+    file_path = r"E:\pdf_share\屈光四图-横版.pdf"
+    file_path = r"E:\pdf_share\屈光四图-竖版.pdf"
+    file_path = r"E:\pdf_share\屈光六图-横版.pdf"
+    file_path = r"E:\pdf_share\屈光六图-竖版.pdf"
+    file_path = r"E:\pdf_share\角膜内皮细胞报告21.pdf"
+    file_path = r"E:\pdf_share\角膜内皮细胞报告22.pdf"
+    file_path = r"E:\pdf_share\角膜内皮细胞报告23.pdf"
+    file_path = r"E:\pdf_share\角膜内皮细胞报告211.pdf"
+    file_path = r"E:\pdf_share\眼表综合检查报告41.pdf"
+    file_path = r"E:\pdf_share\眼表综合检查报告42.pdf"
+    file_path = r"E:\pdf_share\眼表综合检查报告43.pdf"
+    file_path = r"E:\pdf_share\眼表综合检查报告44.pdf"
+    file_path = r"E:\pdf_share\角膜地形图31.pdf"
+    file_path = r"E:\pdf_share\角膜地形图32.pdf"
+    file_path = r"E:\pdf_share\图像总览53.pdf"
+    file_path = r"E:\pdf_share\比较两次检查54.pdf"
+    file_path = r"E:\pdf_share\生物力学-横版.pdf"
+    file_path = r"E:\pdf_share\生物力学-竖版.pdf"
+    # file_path = r"E:\pdf_share\眼底照片.pdf"
+    # file_path = r"E:\pdf_share\Master700.pdf"
+    # file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
 
-    file_path = r"E:\pdf_share\屈光四图.pdf"
-    # file_path = r"E:\test_share1\屈光四图.pdf"
-    file_path = r"E:\pdf_share\眼表综合检查报告_20251024112220.pdf"
-    file_path = r"E:\pdf_share\生物力学L P+C.pdf"
-    file_path = r"E:\pdf_share\生物力学R P+C.pdf"
-    file_path = r"E:\pdf_share\屈光六图.pdf"
-    file_path = r"E:\pdf_share\生物力学_20251024172304.pdf"
-    file_path = r"E:\pdf_share\角膜地形图_20251024173124.pdf"
-    file_path = r"E:\pdf_share\Master700.pdf"
 
-    patient_name, values = analysis_pdf(file_path)
-    print(patient_name)
+    final_file_name, machine, values = analysis_pdf(file_path)
+    print(final_file_name)
+    print(machine)
     print(values)
+
+
+
+
 
 
 

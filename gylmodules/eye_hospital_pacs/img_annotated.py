@@ -14,33 +14,29 @@ from PIL import Image, ImageDraw
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='paddle.utils.cpp_extension')
 
+"""
+在图片指定坐标位置绘制矩形框
+:param image_path: 图片路径
+:param coordinates: 矩形框坐标 [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
+:param save_path: 保存路径(可选)
+:return: 带矩形框的图片数组
+"""
 
 
 def draw_rectangle_on_image(image_path, coordinates, save_path=None):
-    """
-    在图片指定坐标位置绘制矩形框
-    :param image_path: 图片路径
-    :param coordinates: 矩形框坐标 [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
-    :param save_path: 保存路径(可选)
-    :return: 带矩形框的图片数组
-    """
     img = Image.open(image_path)
     draw = ImageDraw.Draw(img)
-
     # 绘制矩形框
     draw.polygon([tuple(p) for p in coordinates], outline="red", width=3)
-
     if save_path:
         img.save(save_path)
         print(f"标注图已保存: {save_path}")
-
     return np.array(img)
 
 
+"""将 PDF 转换为 JPG 格式图片。"""
+
 def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "output_jpg"), dpi=300):
-    """
-    将 PDF 转换为 JPG 格式图片。
-    """
     try:
         # 获取 PDF 文件名（不含扩展名）
         pdf_filename = os.path.splitext(os.path.basename(pdf_path))[0]
@@ -72,8 +68,6 @@ def pdf_to_jpg(pdf_path, output_dir=os.path.join(os.path.dirname(__file__), "out
             print(datetime.now(), f"ERROR 保存第 {i + 1} 页失败: {e}")
 
     return jpg_paths
-
-
 
 
 def get_pdf_orientation(pdf_path):
@@ -167,12 +161,15 @@ def get_pdf_page_size(pdf_path):
 
 pdf_file = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OS_11092025_110222_4 Maps Refr_20250911161528.pdf"
 
-pdf_file = r"E:\pdf_share\屈光四图.pdf"
+
 
 pdf_file = r"E:\test_share1\4.pdf"
 pdf_file = r"E:\pdf_share\0.pdf"
 pdf_file = r"E:\pdf_share\R P+C.pdf"
-pdf_file = r"E:\pdf_share\bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
+pdf_file = r"E:\pdf_share\Master700.pdf"
+pdf_file = r"E:\pdf_share\图像总览53.pdf"
+pdf_file = r"E:\pdf_share\生物力学-横版.pdf"
+pdf_file = r"E:\pdf_share\生物力学-竖版.pdf"
 
 
 output_directory = "."  # 替换为你的输出目录
@@ -193,9 +190,8 @@ for path in saved_jpgs:
 # coordinates = [[550, 1587], [680, 1587], [680, 1623], [550, 1623]]  # k2
 # coordinates = [[312, 1650], [440, 1650], [440, 1685], [312, 1685]]  # rm
 # coordinates = [[310, 2378], [445, 2378], [445, 2412], [310, 2412]]  # 左侧 最薄点位置
-# coordinates = [[575, 2499], [680, 2499], [680, 2535], [575, 2535]]  # 左侧 水平方向白到白
 # coordinates = [[310, 2620], [440, 2620], [440, 2655], [310, 2655]]  # 左侧 前房深度
-
+# coordinates = [[575, 2499], [680, 2499], [680, 2535], [575, 2535]]  # 左侧 水平方向白到白
 # 大范围
 # coordinates = [[50, 1150], [700, 1150], [700, 1450], [50, 1450]]  # 左上角 患者信息
 # coordinates = [[60, 1450], [700, 1450], [700, 1710], [60, 1710]]  # 左侧 角膜前表面
@@ -221,36 +217,37 @@ for path in saved_jpgs:
 # coordinates = [[290, 1800], [1080, 1800], [1080, 2150], [290, 2150]]  # 左侧 最薄点位置
 # coordinates = [[290, 2150], [1080, 2150], [1080, 2370], [290, 2370]]  # 左侧 前房深度
 
+
+
 # 屈光六图
 # 横版
-# coordinates = [[1990, 515], [2150, 515], [2150, 610], [1990, 610]]   # 标识  横版
+# coordinates = [[1500, 400], [1990, 400], [1990, 500], [1500, 500]]   # 标识  横版
 # coordinates = [[1995, 515], [2150, 515], [2150, 560], [1995, 560]]   # 姓  横版
 # coordinates = [[1995, 567], [2150, 567], [2150, 610], [1995, 610]]   # 名  横版
+# coordinates = [[2260, 655], [2380, 655], [2380, 705], [2260, 705]]   # 左右眼  横版
+
 
 # 竖版
 # coordinates = [[1350, 1070], [1820, 1070], [1820, 1150], [1350, 1150]]   #  竖版 标识
 # coordinates = [[1430, 1170], [1550, 1170], [1550, 1210], [1430, 1210]]   # 姓  竖版
 # coordinates = [[1430, 1210], [1550, 1210], [1550, 1250], [1430, 1250]]   # 名  竖版
+# coordinates = [[1645, 1284], [1750, 1284], [1750, 1320], [1645, 1320]]   # 左右眼
 
 
 
 # 塑形镜验配图 角膜地形图
 # coordinates = [[50, 50], [520, 50], [520, 125], [50, 125]]  # 标识
-
 # coordinates = [[55, 150], [700, 150], [700, 220], [55, 220]]  # 顶部患者信息
 # coordinates = [[450, 1600], [1080, 1600], [1080, 1670], [450, 1670]]  # 左侧 平k
 # coordinates = [[450, 1670], [1080, 1670], [1080, 1735], [450, 1735]]  # 左侧 陡k
 # coordinates = [[450, 1740], [1080, 1740], [1080, 1800], [450, 1800]]  # 左侧 △k
 # coordinates = [[450, 1800], [1080, 1800], [1080, 1870], [450, 1870]]  # 左侧 平面E值
 # coordinates = [[450, 1865], [1080, 1865], [1080, 1935], [450, 1935]]  # 左侧 斜面E值
-#
 # coordinates = [[2150, 1600], [2800, 1600], [2800, 1670], [2150, 1670]]  # 右侧 平k
 # coordinates = [[2150, 1670], [2800, 1670], [2800, 1735], [2150, 1735]]  # 右侧 陡k
 # coordinates = [[2150, 1740], [2800, 1740], [2800, 1800], [2150, 1800]]  # 右侧 △k
 # coordinates = [[2150, 1800], [2800, 1800], [2800, 1870], [2150, 1870]]  # 右侧 平面E值
 # coordinates = [[2150, 1865], [2800, 1865], [2800, 1935], [2150, 1935]]  # 右侧 斜面E值
-
-
 
 
 # 角膜内皮细胞报告
@@ -260,18 +257,17 @@ for path in saved_jpgs:
 # coordinates = [[320, 2010], [485, 2010], [485, 2080], [320, 2080]]  # 左右眼  下
 
 # coordinates = [[780, 430], [1160, 430], [1160, 550], [780, 550]]  # 患者信息
-# coordinates = [[1250, 1080], [1650, 1080], [1650, 1280], [1250, 1280]]  # cd1
-# coordinates = [[1250, 2380], [1650, 2380], [1650, 2580], [1250, 2580]]  # cd2
+# coordinates = [[1250, 1180], [1650, 1180], [1650, 1280], [1250, 1280]]  # cd1
+# coordinates = [[1250, 2480], [1650, 2480], [1650, 2580], [1250, 2580]]  # cd2
 
 # 角膜内皮细胞报告 22
-# coordinates = [[1110, 1120], [1580, 1120], [1580, 1310], [1110, 1310]]  # cd1
-# coordinates = [[1110, 2400], [1580, 2400], [1580, 2600], [1110, 2600]]  # cd2
+# coordinates = [[1110, 1210], [1580, 1210], [1580, 1310], [1110, 1310]]  # cd1
+# coordinates = [[1110, 2500], [1580, 2500], [1580, 2600], [1110, 2600]]  # cd2
 
 
 
 # 眼表综合检查报告
 # coordinates = [[960, 200], [1500, 200], [1500, 290], [960, 290]]   # 标识
-#
 # coordinates = [[50, 310], [500, 310], [500, 390], [50, 390]]   # 患者姓名
 # coordinates = [[620, 500], [1000, 500], [1000, 580], [620, 580]]   # 右眼 首次破裂时间
 # coordinates = [[1400, 500], [1700, 500], [1700, 580], [1400, 580]]   # 左眼 首次破裂时间
@@ -287,11 +283,13 @@ for path in saved_jpgs:
 # coordinates = [[2850, 520], [3000, 520], [3000, 571], [2850, 571]]   # 左右眼
 
 # 生物力学  非接触式眼压计
-# coordinates = [[180, 535], [310, 535], [310, 591], [180, 591]]   # 横版  标识
+# coordinates = [[480, 710], [800, 710], [800, 800], [480, 800]]   # 横版  标识
 # coordinates = [[420, 535], [750, 535], [750, 591], [420, 591]]   # 患者姓名  横版
+# coordinates = [[1370, 591], [1650, 591], [1650, 650], [1370, 650]]   # 左右眼  横版
 
-# coordinates = [[20, 1210], [100, 1210], [100, 1250], [20, 1250]]   # 竖版 标识
+# coordinates = [[210, 1340], [500, 1340], [500, 1410], [210, 1410]]   # 竖版 标识
 # coordinates = [[180, 1210], [430, 1210], [430, 1250], [180, 1250]]   # 患者姓名  竖版
+# coordinates = [[940, 1250], [1130, 1250], [1130, 1295], [940, 1295]]   # 左右眼  竖版
 
 
 # 眼底照片
@@ -299,10 +297,11 @@ for path in saved_jpgs:
 # coordinates = [[1150, 50], [1600, 50], [1600, 115], [1150, 115]]   # 患者姓名
 
 
-
 # # Master700
 # 标识
 # coordinates = [[200, 3190], [600, 3190], [600, 3270], [200, 3270]]
+# 姓名
+# coordinates = [[450, 120], [900, 120], [900, 250], [450, 250]]
 # 标题
 # coordinates = [[950, 930], [1600, 930], [1600, 1090], [950, 1090]]
 # # OD AL
@@ -323,16 +322,14 @@ for path in saved_jpgs:
 # coordinates = [[1910, 2760], [2240, 2760], [2240, 2820], [1910, 2820]]
 
 
-
-
 # 阿玛仕 全激光 设备报告
 # 标识
-coordinates = [[300, 70], [800, 70], [800, 130], [300, 130]]
-# 左右眼
-coordinates = [[300, 500], [430, 500], [430, 630], [300, 630]]
-# 姓名
-coordinates = [[880, 555], [1200, 555], [1200, 625], [880, 625]]
-coordinates = [[1310, 555], [1600, 555], [1600, 625], [1310, 625]]
+# coordinates = [[300, 70], [800, 70], [800, 130], [300, 130]]
+# # 左右眼
+# coordinates = [[300, 500], [430, 500], [430, 630], [300, 630]]
+# # 姓名
+# coordinates = [[880, 555], [1200, 555], [1200, 625], [880, 625]]
+# coordinates = [[1310, 555], [1600, 555], [1600, 625], [1310, 625]]
 
 # 角膜曲率 k1
 # coordinates = [[680, 960], [1110, 960], [1110, 1025], [680, 1025]]
