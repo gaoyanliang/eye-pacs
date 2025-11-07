@@ -64,28 +64,33 @@ def is_file_stable(filepath):
     return True
 
 
+"""获取当天日期的子目录路径，如果不存在则创建"""
+
+
 def get_dated_subdir():
-    """获取当天日期的子目录路径，如果不存在则创建"""
     date_str = datetime.now().strftime("%Y%m%d")
     dated_dir = os.path.join(DEST_BASE_DIR, date_str)
     os.makedirs(dated_dir, exist_ok=True)
     return dated_dir
 
 
+"""确保基础目录存在"""
+
+
 def ensure_dirs_exist():
-    """确保基础目录存在"""
     os.makedirs(SOURCE_DIR, exist_ok=True)
     os.makedirs(DEST_BASE_DIR, exist_ok=True)
     logger.debug(f"监控目录: {SOURCE_DIR}")
     logger.debug(f"目标基础目录: {DEST_BASE_DIR}")
 
 
+"""处理文件：保持原始目录结构，移动到当天日期的子目录"""
+
+
 def process_file(src_rel_path, retry_count=0):
-    """处理文件：保持原始目录结构，移动到当天日期的子目录"""
     try:
         # 源文件完整路径
         src_full_path = os.path.join(SOURCE_DIR, src_rel_path)
-
         # 基础检查
         if not os.path.exists(src_full_path):
             logger.warning(f"文件不存在: {src_full_path}")
@@ -104,65 +109,7 @@ def process_file(src_rel_path, retry_count=0):
         # 分离文件名和扩展名
         dirname, filename = os.path.split(src_rel_path)
         basename, ext = os.path.splitext(filename)
-        date_str = datetime.now().strftime("%Y%m%d%H%M%S")
-        machine = '未收录设备'
-        if str(ext).lower().__contains__('pdf'):
-            if filename.startswith("21") or filename.startswith("23"):
-                basename = "角膜内皮细胞报告"
-                machine = "角膜内皮显微镜"
-            elif filename.startswith("22"):
-                basename = "角膜内皮细胞报告2"
-                machine = "角膜内皮显微镜"
-            elif filename.startswith("31") or filename.startswith("32"):
-                basename = "角膜地形图"
-                machine = "角膜地形图仪Medmont"
-            elif (filename.startswith("41") or filename.startswith("42") or filename.startswith("43")
-                  or filename.startswith("44")):
-                basename = "眼表综合检查报告"
-                machine = "角膜地形图仪"
-            elif (filename.startswith("51r") or filename.startswith("51R")
-                      or filename.__contains__("4 Maps Refr")):
-                basename = "屈光四图-右"
-                machine = "眼前节分析仪"
-            elif (filename.startswith("51l") or filename.startswith("51L")
-                      or filename.__contains__("4 Maps Refr")):
-                basename = "屈光四图-左"
-                machine = "眼前节分析仪"
-            elif (filename.startswith("52r") or filename.startswith("52R")):
-                basename = "屈光六图-右"
-                machine = "眼前节分析仪"
-            elif (filename.startswith("52l") or filename.startswith("52L")):
-                basename = "屈光六图-左"
-                machine = "眼前节分析仪"
-            elif (filename.startswith("53r") or filename.startswith("53R")):
-                basename = "Scheimpflug图像总览-右"
-                machine = "眼前节分析仪"
-            elif (filename.startswith("53l") or filename.startswith("53L")):
-                basename = "Scheimpflug图像总览-左"
-                machine = "眼前节分析仪"
-            elif (filename.startswith("54r") or filename.startswith("54R")):
-                basename = "比较两次检查-右"
-                machine = "眼前节分析仪"
-            elif (filename.startswith("54l") or filename.startswith("54L")):
-                basename = "比较两次检查-左"
-                machine = "眼前节分析仪"
-            elif  (filename.startswith("6r") or filename.startswith("6R")):
-                basename = "生物力学-右"
-                machine = "非接触式眼压计"
-            elif (filename.startswith("6l") or filename.startswith("6L")):
-                basename = "生物力学-左"
-                machine = "非接触式眼压计"
-            elif filename.startswith("7"):
-                basename = "眼底照片"
-                machine = "眼底照相机"
-        new_filename = f"{basename}_{date_str}{ext}"
-        # 阿玛仕设备特殊判断
-        if basename.__contains__('_'):
-            part = basename.split('_')
-            if part and len(part) == 4 and len(part[0]) == 10:
-                new_filename = f"Master700_{basename}{ext}"
-                machine = "蔡司Master700"
-
+        new_filename = f'{basename}_{datetime.now().strftime("%Y%m%d%H%M%S")}{ext}'
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 移动 {filename} 到 {new_filename}")
         # 获取当天日期目录
         dated_dir = get_dated_subdir()
@@ -176,8 +123,7 @@ def process_file(src_rel_path, retry_count=0):
         # 移动文件
         shutil.move(src_full_path, dest_full_path)
         logger.debug(f"文件已移动: {src_rel_path} -> {dated_dir}/{dirname}/{new_filename}")
-        return True, (new_filename, dest_full_path.replace('/', '&'), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), machine)
-
+        return True, (new_filename, dest_full_path.replace('/', '&'), datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     except Exception as e:
         logger.error(f"处理文件 {src_rel_path} 失败: {e}")
         return False, ''
@@ -228,12 +174,10 @@ def monitor_directory():
                 except Exception as e:
                     logger.error(f"处理文件异常: {rel_path} - {str(e)}")
 
-
         if process_file_list:
             # 批量插入数据库
-            insert_sql = """INSERT INTO nsyy_gyl.ehp_reports 
-                            (report_name, report_addr, report_time, report_machine) 
-                            VALUES (%s, %s, %s, %s)"""
+            insert_sql = """INSERT INTO nsyy_gyl.ehp_reports (report_name, report_addr, report_time) 
+                            VALUES (%s, %s, %s)"""
             db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                         global_config.DB_DATABASE_GYL)
             db.execute_many(insert_sql, args=process_file_list, need_commit=True)
