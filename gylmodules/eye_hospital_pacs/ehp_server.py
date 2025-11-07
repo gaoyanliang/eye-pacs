@@ -4,6 +4,8 @@ import re
 import time
 from datetime import datetime
 
+import requests
+
 from gylmodules import global_config
 from gylmodules.eye_hospital_pacs import ehp_config
 from gylmodules.utils.db_utils import DbUtil
@@ -247,7 +249,7 @@ def get_birthday_from_id(id_number):
 """查询报告列表"""
 
 
-def query_report_list(register_id):
+def query_report_list(register_id, patient_name: str = '', report_date: str = ''):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     report_list = db.query_all(f"SELECT *, YEAR(report_time) as year FROM nsyy_gyl.ehp_reports where register_id = '{register_id}' "
@@ -268,6 +270,10 @@ def query_report_list(register_id):
                 merged_dict = {**merged_dict, **report_value}
         else:
             other_report.append(report)
+
+    shiguang_report = {}
+    if patient_name and report_date:
+        shiguang_report = fetch_data(patient_name, report_date)
 
     return {"report_list": {
                         'bind_report': report_group,
@@ -342,8 +348,8 @@ def query_report_list(register_id):
                 "晶体植入术前眼部检查和晶体信息": {
                     "eyeExam": {
                         "acd": {
-                            "od": merged_dict.get('r_depth', ''),
-                            "os": merged_dict.get('l_depth', ''),
+                            "od": merged_dict.get('r_distance', ''),
+                            "os": merged_dict.get('l_distance', '')
                         },
                         "wtw": {
                             "master": {
@@ -351,8 +357,8 @@ def query_report_list(register_id):
                                 "os": merged_dict.get('l_wtw', ''),
                             },
                             "pentacam": {
-                                "od": merged_dict.get('r_distance', ''),
-                                "os": merged_dict.get('l_distance', '')
+                                "od": merged_dict.get('r_depth', ''),
+                                "os": merged_dict.get('l_depth', ''),
                             }
                         },
                         "endothelialCells": {
@@ -363,6 +369,15 @@ def query_report_list(register_id):
 
                 },
                 "眼视光门诊病历": {
+                            "check2": shiguang_report.get('nra', ''),
+                            "check3": shiguang_report.get('pra', ''),
+                            "check4": shiguang_report.get('aca', ''),
+                            "check6": shiguang_report.get('ar', {}).get('od'),
+                            "check7": shiguang_report.get('ar', {}).get('os'),
+                            "check8": shiguang_report.get('ar', {}).get('ou'),
+                            "check9": shiguang_report.get('af', {}).get('od'),
+                            "check10": shiguang_report.get('af', {}).get('os'),
+                            "check11": shiguang_report.get('af', {}).get('ou'),
                             "other_check": {
                                 "addon": {
                                     "axial_od": merged_dict.get('r_al', ''),
@@ -584,3 +599,114 @@ def query_patient_by_name(name):
     return None
 
 
+"""处理已解析的报告但是为绑定 - 作报告在前 挂号在后"""
+
+def auto_bind_report():
+    db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
+                global_config.DB_DATABASE_GYL)
+    report_list = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_reports "
+                               f"WHERE report_value is not null and register_id is NULL and DATE(report_time) = CURRENT_DATE()")
+    if not report_list:
+        del db
+        return
+
+    try:
+        for report in report_list:
+            values = report.get('report_value')
+            if not values:
+                continue
+            values = json.loads(values)
+            patient_name = values.get('name', '')
+            if patient_name:
+                patients = query_patient_by_name(patient_name)
+                if patients:
+                    register_id = patients[0].get('挂号id')
+                    patient_id = patients[0].get('门诊号')
+            db.execute(f"UPDATE nsyy_gyl.ehp_reports SET register_id = '{register_id}', patient_id = '{patient_id}'"
+                       f"WHERE report_id = {report.get('report_id')}", need_commit=True)
+    except Exception as e:
+        del db
+        logger.error("auto bind report exception", e)
+    del db
+
+
+
+"""查询视光报告"""
+
+
+def fetch_data(patient_name, report_date):
+    headers = {
+        'Accept': 'application/json, text/plain, */*', 'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Authorization': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpblR5cGUiOiJsb2dpbiIsImxvZ2luSWQiOiJzdG9yZTUyMiIsInJuU3RyIjoiYkc1a3RIVnFCbUtDTWYyaTA1MTVtN2gxeE9QcjRVSjAiLCJ1c2VySWQiOjUyMn0.vsjqNhJfBj0E3moyDVVFLslxomNdkNF3ZjgZ8mmq3MA',
+        'Content-Type': 'application/json;charset=UTF-8', 'Origin': 'http://39.105.5.236:3100/',
+        'Proxy-Connection': 'keep-alive', 'Referer': 'http://39.105.5.236:3100/',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+    }
+    url = f"http://39.105.5.236:29000/system-api/exam-record/page"
+    payload = {"nickName": patient_name, "page": 1, "limit": 100, "startTime": f"{report_date} 00:00:00"}
+    max_retries, retry_count, retry_delay = 3, 0, 1
+    while retry_count < max_retries:
+        try:
+            response = requests.Session().post(url=url, headers=headers, data=json.dumps(payload), verify=False)
+            response.raise_for_status()
+            ret = response.json()
+            if ret.get("status") == 0:
+                results = ret.get("data", {}).get('results', [])
+                if not results:
+                    return {}
+                results = results[0]
+                recordList = results.get('recordList', [])
+                ret_data = {}
+                for item in recordList:
+                    if item.get('type') == 'nr':
+                        # NRA
+                        ret_data['nra'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
+                            '双眼', 'OU').replace('\n', ' ')
+                    if item.get('type') == 'pr':
+                        # PRA
+                        ret_data['pra'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
+                            '双眼', 'OU').replace('\n', ' ')
+                    if item.get('type') == 'ac':
+                        # AC/A
+                        ret_data['aca'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
+                            '双眼', 'OU').replace('\n', ' ')
+                    if item.get('type') == 'ar':
+                        # 调节幅度
+                        matches = re.findall(r'(右眼|左眼|双眼)：(\d+)\s*cpm', item.get('result', ''))
+                        tmp = {}
+                        for eye, cpm in matches:
+                            if eye == '右眼':
+                                tmp['od'] = cpm
+                            if eye == '左眼':
+                                tmp['os'] = cpm
+                            if eye == '双眼':
+                                tmp['ou'] = cpm
+                        ret_data['ar'] = tmp
+                    if item.get('type') == 'af':
+                        # 调节灵活度
+                        matches = re.findall(r'(右眼|左眼|双眼)：(\d+)\s*cpm', item.get('result', ''))
+                        tmp = {}
+                        for eye, cpm in matches:
+                            if eye == '右眼':
+                                tmp['od'] = cpm
+                            if eye == '左眼':
+                                tmp['os'] = cpm
+                            if eye == '双眼':
+                                tmp['ou'] = cpm
+                        ret_data['af'] = tmp
+                    if item.get('type') == 'fv':
+                        # 近水平聚散度
+                        ret_data['fv'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
+                            '双眼', 'OU').replace('\n', ' ')
+                return ret_data
+            else:
+                raise Exception(f"❌ 获取数据失败！{datetime.now()} status != 0")
+        except Exception as e:
+            retry_count += 1
+            if retry_count < max_retries:
+                sleep_time = retry_delay * (2 ** (retry_count - 1))  # 指数退避
+                logger.warning(f"视光威萌报告 第 {retry_count}/{max_retries} 次重试... {sleep_time} 秒后重试")
+                time.sleep(sleep_time)
+            else:
+                logger.error(f"视光威萌报告 已达最大重试次数 {max_retries}。最后错误: {str(e)}")
+                return {}

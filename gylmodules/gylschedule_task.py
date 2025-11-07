@@ -2,6 +2,7 @@ import logging
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from gylmodules.eye_hospital_pacs.ehp_server import auto_bind_report
 from gylmodules.eye_hospital_pacs.pdf_ocr_analysis import regularly_parsing_eye_report
 
 # 配置调度器，设置执行器，ThreadPoolExecutor 管理线程池并发
@@ -11,9 +12,11 @@ gylmodule_scheduler = BackgroundScheduler(timezone="Asia/Shanghai", executors=ex
 logger = logging.getLogger(__name__)
 
 
+3
 def schedule_task():
     # ====================== 定时任务 ======================
     gylmodule_scheduler.add_job(regularly_parsing_eye_report, trigger='interval', seconds=2*60)
+    gylmodule_scheduler.add_job(auto_bind_report, trigger='interval', seconds=7*60)
 
     # ======================  Start ======================
     gylmodule_scheduler.start()

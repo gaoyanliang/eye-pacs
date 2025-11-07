@@ -533,13 +533,13 @@ def analysis_pdf(file_path):
                 cd_matches = re.findall(r'CD[：:\s]*(\d+)', ret_data.get('cd2', ''), re.IGNORECASE)
                 ret_data['cd2'] = cd_matches[0]
                 if ret_data.get('eye_up', '').__contains__("OD") or ret_data.get('eye_up', '').__contains__("od") or ret_data.get('eye_up', '').__contains__("R"):
-                    ret_data['r_cd1'] = ret_data.pop('cd1', '')
+                    ret_data['r_cd'] = ret_data.pop('cd1', '')
                 else:
-                    ret_data['l_cd1'] = ret_data.pop('cd1', '')
+                    ret_data['l_cd'] = ret_data.pop('cd1', '')
                 if ret_data.get('eye_down', '').__contains__("OS") or ret_data.get('eye_down', '').__contains__("os") or ret_data.get('eye_down', '').__contains__("L"):
-                    ret_data['l_cd2'] = ret_data.pop('cd2', '')
+                    ret_data['l_cd'] = ret_data.pop('cd2', '')
                 else:
-                    ret_data['r_cd2'] = ret_data.pop('cd2', '')
+                    ret_data['r_cd'] = ret_data.pop('cd2', '')
         elif analy_name.__contains__('眼表综合检查报告') or analy_name.__contains__('角膜地形图'):
             if analy_name.__contains__('眼表综合检查报告'):
                 regions = {
@@ -585,6 +585,15 @@ def analysis_pdf(file_path):
                 ret_data['r_pe'] = match.group(1) if match else ret_data.get('r_pe', '')
                 match = re.search(r'([\d.]+)\s*@', ret_data.get('l_pe', ''))
                 ret_data['l_pe'] = match.group(1) if match else ret_data.get('l_pe', '')
+            if not ret_data.get('r_pk1', '') and  not ret_data.get('l_pk1', '') and not ret_data.get('r_pe', '') and  not ret_data.get('l_pe', ''):
+                ret_data.pop('r_pk1')
+                ret_data.pop('l_pk1')
+                ret_data.pop('r_xk2')
+                ret_data.pop('l_xk2')
+                ret_data.pop('r_pe')
+                ret_data.pop('l_pe')
+                ret_data.pop('l_dk3')
+                ret_data.pop('r_dk3')
         elif analy_name.__contains__('图像总览') or analy_name.__contains__('比较两次检查'):
             if analy_name.__contains__('比较两次检查'):
                 regions = {
@@ -691,18 +700,19 @@ def analysis_pdf(file_path):
                     .replace('，', '').replace('.', '').replace('。', '')
 
                 if 'l_cw_chord' in ret_data:
-                    match = re.search(r'([\d.]+)\s*mm\s*(?:@|\d*\s*)?\s*(\d+)°', ret_data.get('l_cw_chord', ''))
+                    pattern = r'([\d.]+)\s*mm\s*(?:@|\(\d+\)|（\d+）|\d*\s*)?\s*(\d+)\s*°?'
+                    match = re.search(pattern, ret_data.get('l_cw_chord', ''))
                     if match:
                         num1 = match.group(1) if match.group(1) else ''
                         num2 = match.group(2) if match.group(2) else ''
                         ret_data['l_cw_chord'] = f"{num1} mm @ {num2}°"
                 if 'r_cw_chord' in ret_data:
-                    match = re.search(r'([\d.]+)\s*mm\s*(?:@|\d*\s*)?\s*(\d+)°', ret_data.get('r_cw_chord', ''))
+                    pattern = r'([\d.]+)\s*mm\s*(?:@|\(\d+\)|（\d+）|\d*\s*)?\s*(\d+)\s*°?'
+                    match = re.search(pattern, ret_data.get('r_cw_chord', ''))
                     if match:
                         num1 = match.group(1) if match.group(1) else ''
                         num2 = match.group(2) if match.group(2) else ''
                         ret_data['r_cw_chord'] = f"{num1} mm @ {num2}°"
-
         elif analy_name.__contains__('阿玛仕手术报告'):
             regions = {
                     "xing": (1310, 555, 1600, 625), "ming": (880, 555, 1200, 625), "eye": (300, 500, 430, 630),
@@ -730,12 +740,12 @@ def analysis_pdf(file_path):
 
             # 提取数字部分（包括小数和整数）
             numbers = re.findall(r'\d+(?:[.,]\d+)?', ret_data.get('p_k1', ''))
-            if len(numbers) > 1:
-                ret_data['p_k1'] = f"{numbers[0]}D @ {numbers[-1]}°"
+            if len(numbers) > 0:
+                ret_data['p_k1'] = f"k1 {numbers[0]}"
 
             numbers = re.findall(r'\d+(?:[.,]\d+)?', ret_data.get('p_k2', ''))
-            if len(numbers) > 1:
-                ret_data['p_k2'] = f"{numbers[0]}D @ {numbers[-1]}°"
+            if len(numbers) > 0:
+                ret_data['p_k2'] = f"k2 {numbers[0]}"
 
             ret_data[f'corneal_curvate_{eye_type}'] = ret_data.pop('p_k1', '') + " " + ret_data.pop('p_k2', '')
             ret_data[f'diopter_{eye_type}'] = ret_data.pop('diopter', '')
@@ -746,6 +756,13 @@ def analysis_pdf(file_path):
            print(f"{datetime.now()} {file_path} 暂不支持解析")
     except Exception as e:
         print(f"{datetime.now()} {file_path} 解析报告异常 {e}")
+
+    for k,v in ret_data.items():
+        if str(v).endswith('s') or str(v).endswith('um') or str(v).endswith('mm') or str(v).endswith('μm') or str(v).endswith('毫米') or str(v).endswith('微米') or str(v).endswith('D')  or str(v).endswith('x') or str(v).endswith('Dx'):
+            ret_data[k] = (str(v).replace('mm', '').replace('μm', '')
+                           .replace('毫米', '').replace('微米', '')
+                           .replace('D', '').replace('Dx', '')
+                           .replace('x', '').replace('um', '').replace('s', ''))
 
     print(f"{datetime.now()} {file_path} 解析报告成功, to-jpg 耗时 {to_jpg_time}, 总耗时 {time.time() - start_time}")
     return final_file_name, machine, ret_data
@@ -1325,19 +1342,24 @@ if __name__ == "__main__":
     # file_path = r"E:\pdf_share\角膜地形图31.pdf"
     # file_path = r"E:\pdf_share\角膜地形图32.pdf"
     # file_path = r"E:\pdf_share\图像总览53.pdf"
-    file_path = r"E:\pdf_share\比较两次检查54.pdf"
+    # file_path = r"E:\pdf_share\比较两次检查54.pdf"
     # file_path = r"E:\pdf_share\生物力学-横版.pdf"
     # file_path = r"E:\pdf_share\生物力学-竖版.pdf"
     # file_path = r"E:\pdf_share\眼底照片.pdf"
-    # file_path = r"E:\pdf_share\Master700.pdf"
-    # file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
+    file_path = r"E:\pdf_share\Master700.pdf"
+    file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
 
 
-    final_file_name, machine, values = analysis_pdf(file_path)
-    print(final_file_name)
-    print(machine)
-    print(values)
-
+    # final_file_name, machine, values = analysis_pdf(file_path)
+    # print(final_file_name)
+    # print(machine)
+    # print(values)
+    # #
+    # # for k,v in values.items():
+    # #     values[k] = str(v).replace('mm', '').replace('μm', '').replace('mm', '')
+    #
+    # for k,v in values.items():
+    #     print(k, v)
 
 
 

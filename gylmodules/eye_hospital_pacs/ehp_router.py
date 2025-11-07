@@ -66,7 +66,7 @@ def query_medical_record(json_data):
 @ehp_system.route('/query_reports', methods=['POST', 'GET'])
 @api_response
 def query_report_list(json_data):
-    return ehp_server.query_report_list(json_data.get('register_id'))
+    return ehp_server.query_report_list(json_data.get('register_id'), json_data.get('patient_name', ''), json_data.get('report_date', ''))
 
 
 @ehp_system.route('/query_history_reports', methods=['POST', 'GET'])
