@@ -170,6 +170,7 @@ pdf_file = r"E:\pdf_share\Master700.pdf"
 pdf_file = r"E:\pdf_share\图像总览53.pdf"
 pdf_file = r"E:\pdf_share\生物力学-横版.pdf"
 pdf_file = r"E:\pdf_share\生物力学-竖版.pdf"
+pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/屈光四图-横版.pdf"
 
 
 output_directory = "."  # 替换为你的输出目录

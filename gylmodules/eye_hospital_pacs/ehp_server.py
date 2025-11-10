@@ -624,10 +624,10 @@ def auto_bind_report():
                     patient_id = patients[0].get('门诊号')
             db.execute(f"UPDATE nsyy_gyl.ehp_reports SET register_id = '{register_id}', patient_id = '{patient_id}'"
                        f"WHERE report_id = {report.get('report_id')}", need_commit=True)
+        del db
     except Exception as e:
         del db
         logger.error("auto bind report exception", e)
-    del db
 
 
 
