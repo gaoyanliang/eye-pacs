@@ -1342,18 +1342,18 @@ if __name__ == "__main__":
     # file_path = r"E:\pdf_share\角膜地形图31.pdf"
     # file_path = r"E:\pdf_share\角膜地形图32.pdf"
     # file_path = r"E:\pdf_share\图像总览53.pdf"
-    # file_path = r"E:\pdf_share\比较两次检查54.pdf"
+    file_path = r"E:\pdf_share\比较两次检查54.pdf"
     # file_path = r"E:\pdf_share\生物力学-横版.pdf"
     # file_path = r"E:\pdf_share\生物力学-竖版.pdf"
     # file_path = r"E:\pdf_share\眼底照片.pdf"
-    file_path = r"E:\pdf_share\Master700.pdf"
-    file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
+    # file_path = r"E:\pdf_share\Master700.pdf"
+    # file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
 
 
-    # final_file_name, machine, values = analysis_pdf(file_path)
-    # print(final_file_name)
-    # print(machine)
-    # print(values)
+    final_file_name, machine, values = analysis_pdf(file_path)
+    print(final_file_name)
+    print(machine)
+    print(values)
     # #
     # # for k,v in values.items():
     # #     values[k] = str(v).replace('mm', '').replace('μm', '').replace('mm', '')

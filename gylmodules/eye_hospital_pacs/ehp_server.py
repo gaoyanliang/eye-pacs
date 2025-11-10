@@ -658,6 +658,8 @@ def fetch_data(patient_name, report_date):
                 recordList = results.get('recordList', [])
                 ret_data = {}
                 for item in recordList:
+                    if item.get('type') not in ['nr', 'pr', 'ac', 'ar', 'af', 'fv']:
+                        continue
                     if item.get('type') == 'nr':
                         # NRA
                         ret_data['nra'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
@@ -672,7 +674,7 @@ def fetch_data(patient_name, report_date):
                             '双眼', 'OU').replace('\n', ' ')
                     if item.get('type') == 'ar':
                         # 调节幅度
-                        matches = re.findall(r'(右眼|左眼|双眼)：(\d+)\s*cpm', item.get('result', ''))
+                        matches = re.findall(r'(右眼|左眼|双眼)[:：]\s*([^\n\r]+)', item.get('result', ''))
                         tmp = {}
                         for eye, cpm in matches:
                             if eye == '右眼':
