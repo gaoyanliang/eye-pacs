@@ -271,13 +271,20 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
         else:
             other_report.append(report)
 
-    shiguang_report = {}
-    if patient_name and report_date:
-        shiguang_report = fetch_data(patient_name, report_date)
+    shiguang_reports = shiguang_report(patient_name)
+    if shiguang_reports:
+        for report in shiguang_reports:
+            report['value_well'] = json.loads(report['value_well']) if report['value_well'] else {}
+    shiguang_data = {}
+    for item in shiguang_reports:
+        if item.get('check_time').__contains__(report_date):
+            tmp = item.get('value_well')
+            shiguang_data = {**shiguang_data, **tmp}
 
     return {"report_list": {
                         'bind_report': report_group,
                         'other_report': other_report,
+                        'shiguang_reports': shiguang_reports
                     },
                 "屈光手术安全核查表": ehp_config.verification_form,
                 "屈光手术风险评估表": ehp_config.risk_assessment,
@@ -348,8 +355,8 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
                 "晶体植入术前眼部检查和晶体信息": {
                     "eyeExam": {
                         "acd": {
-                            "od": merged_dict.get('r_distance', ''),
-                            "os": merged_dict.get('l_distance', '')
+                            "od": merged_dict.get('r_depth', ''),
+                            "os": merged_dict.get('l_depth', '')
                         },
                         "wtw": {
                             "master": {
@@ -357,8 +364,8 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
                                 "os": merged_dict.get('l_wtw', ''),
                             },
                             "pentacam": {
-                                "od": merged_dict.get('r_depth', ''),
-                                "os": merged_dict.get('l_depth', ''),
+                                "od": merged_dict.get('r_distance', ''),
+                                "os": merged_dict.get('l_distance', ''),
                             }
                         },
                         "endothelialCells": {
@@ -369,15 +376,21 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
 
                 },
                 "眼视光门诊病历": {
-                            "check2": shiguang_report.get('nra', ''),
-                            "check3": shiguang_report.get('pra', ''),
-                            "check4": shiguang_report.get('aca', ''),
-                            "check6": shiguang_report.get('ar', {}).get('od'),
-                            "check7": shiguang_report.get('ar', {}).get('os'),
-                            "check8": shiguang_report.get('ar', {}).get('ou'),
-                            "check9": shiguang_report.get('af', {}).get('od'),
-                            "check10": shiguang_report.get('af', {}).get('os'),
-                            "check11": shiguang_report.get('af', {}).get('ou'),
+                            "check2": shiguang_data.get('nra', ''),
+                            "check3": shiguang_data.get('pra', ''),
+                            "check4": shiguang_data.get('aca', ''),
+                            "check6": shiguang_data.get('ar', {}).get('od'),
+                            "check7": shiguang_data.get('ar', {}).get('os'),
+                            "check8": shiguang_data.get('ar', {}).get('ou'),
+                            "check9": shiguang_data.get('af', {}).get('od'),
+                            "check10": shiguang_data.get('af', {}).get('os'),
+                            "check11": shiguang_data.get('af', {}).get('ou'),
+                            "check13": shiguang_data.get('fv', {}).get('bim'),
+                            "check14": shiguang_data.get('fv', {}).get('bif'),
+                            "check15": shiguang_data.get('fv', {}).get('bih'),
+                            "check16": shiguang_data.get('fv', {}).get('bom'),
+                            "check17": shiguang_data.get('fv', {}).get('bof'),
+                            "check18": shiguang_data.get('fv', {}).get('boh'),
                             "other_check": {
                                 "addon": {
                                     "axial_od": merged_dict.get('r_al', ''),
@@ -482,8 +495,6 @@ def name_to_pinyin(name: str) -> str:
 
 
 def query_patient_info(key, guahao_id, date_str):
-    if not date_str:
-        raise Exception('日期不能为空')
     start_time = time.time()
     if guahao_id and len(str(guahao_id)) == 9:
         db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
@@ -501,7 +512,7 @@ def query_patient_info(key, guahao_id, date_str):
     # 查询自主添加的患者
     local_record = []
     if not guahao_id:
-        condition_sql = "and (name like '%{key}%' or id_card_no like '%{key}%' or phone_num like '%{key}%' or home_addr like '%{key}%')" if key else ""
+        condition_sql = " and (name like '%{key}%' or id_card_no like '%{key}%' or phone_num like '%{key}%' or home_addr like '%{key}%') " if key else ""
         db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                     global_config.DB_DATABASE_GYL)
         query_sql = (f"select register_id 挂号id, register_id 病人id, register_id 门诊号, name AS 患者姓名, "
@@ -518,12 +529,14 @@ def query_patient_info(key, guahao_id, date_str):
     # 数据库连接配置（实际应用中应该从环境变量或配置文件中读取）
     db_config = {'user': 'ZLHIS', 'password': "DAE42", 'dsn': '192.168.190.254:1521/orcl'}
 
+    condition_sql = ''
+    if date_str:
+        condition_sql = " AND TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') "
     if key:
         sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
                 a.执行人 AS 医生姓名, a.发生时间 as 就诊日期, TO_CHAR(c.出生日期, 'YYYY/MM/DD') as 出生日期, c.家庭电话 联系电话, c.身份证号, c.家庭地址 现住址
                 FROM 病人挂号记录 a LEFT JOIN 部门表 b ON a.执行部门id = b.id 
-                join 病人信息 c on a.病人id = c.病人id WHERE TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') 
-                and a.记录状态 = 1 and (c.姓名 like '%{key}%' or 
+                join 病人信息 c on a.病人id = c.病人id WHERE a.记录状态 = 1 {condition_sql} and (c.姓名 like '%{key}%' or 
                 c.身份证号 like '%{key}%' or c.家庭电话 like '%{key}%') order by a.发生时间 desc """
         params = {}
     else:
@@ -575,7 +588,7 @@ def query_patient_info(key, guahao_id, date_str):
                 for item in results:
                     item['姓名拼音'] = name_to_pinyin(item['患者姓名'])
 
-                # logger.info(f"查询耗时： {time.time() - start_time}")
+                logger.debug(f"查询耗时： {time.time() - start_time}")
                 return results[0] if guahao_id else results + local_record
 
     except cx_Oracle.Error as error:
@@ -622,8 +635,8 @@ def auto_bind_report():
                 if patients:
                     register_id = patients[0].get('挂号id')
                     patient_id = patients[0].get('门诊号')
-            db.execute(f"UPDATE nsyy_gyl.ehp_reports SET register_id = '{register_id}', patient_id = '{patient_id}'"
-                       f"WHERE report_id = {report.get('report_id')}", need_commit=True)
+                    db.execute(f"UPDATE nsyy_gyl.ehp_reports SET register_id = '{register_id}', patient_id = '{patient_id}'"
+                               f"WHERE report_id = {report.get('report_id')}", need_commit=True)
         del db
     except Exception as e:
         del db
@@ -635,80 +648,31 @@ def auto_bind_report():
 
 
 def fetch_data(patient_name, report_date):
-    headers = {
-        'Accept': 'application/json, text/plain, */*', 'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Authorization': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpblR5cGUiOiJsb2dpbiIsImxvZ2luSWQiOiJzdG9yZTUyMiIsInJuU3RyIjoiYkc1a3RIVnFCbUtDTWYyaTA1MTVtN2gxeE9QcjRVSjAiLCJ1c2VySWQiOjUyMn0.vsjqNhJfBj0E3moyDVVFLslxomNdkNF3ZjgZ8mmq3MA',
-        'Content-Type': 'application/json;charset=UTF-8', 'Origin': 'http://39.105.5.236:3100/',
-        'Proxy-Connection': 'keep-alive', 'Referer': 'http://39.105.5.236:3100/',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
-    }
-    url = f"http://39.105.5.236:29000/system-api/exam-record/page"
-    payload = {"nickName": patient_name, "page": 1, "limit": 100, "startTime": f"{report_date} 00:00:00"}
-    max_retries, retry_count, retry_delay = 3, 0, 1
-    while retry_count < max_retries:
-        try:
-            response = requests.Session().post(url=url, headers=headers, data=json.dumps(payload), verify=False)
-            response.raise_for_status()
-            ret = response.json()
-            if ret.get("status") == 0:
-                results = ret.get("data", {}).get('results', [])
-                if not results:
-                    return {}
-                results = results[0]
-                recordList = results.get('recordList', [])
-                ret_data = {}
-                for item in recordList:
-                    if item.get('type') not in ['nr', 'pr', 'ac', 'ar', 'af', 'fv']:
-                        continue
-                    if item.get('type') == 'nr':
-                        # NRA
-                        ret_data['nra'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
-                            '双眼', 'OU').replace('\n', ' ')
-                    if item.get('type') == 'pr':
-                        # PRA
-                        ret_data['pra'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
-                            '双眼', 'OU').replace('\n', ' ')
-                    if item.get('type') == 'ac':
-                        # AC/A
-                        ret_data['aca'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
-                            '双眼', 'OU').replace('\n', ' ')
-                    if item.get('type') == 'ar':
-                        # 调节幅度
-                        matches = re.findall(r'(右眼|左眼|双眼)[:：]\s*([^\n\r]+)', item.get('result', ''))
-                        tmp = {}
-                        for eye, cpm in matches:
-                            if eye == '右眼':
-                                tmp['od'] = cpm
-                            if eye == '左眼':
-                                tmp['os'] = cpm
-                            if eye == '双眼':
-                                tmp['ou'] = cpm
-                        ret_data['ar'] = tmp
-                    if item.get('type') == 'af':
-                        # 调节灵活度
-                        matches = re.findall(r'(右眼|左眼|双眼)：(\d+)\s*cpm', item.get('result', ''))
-                        tmp = {}
-                        for eye, cpm in matches:
-                            if eye == '右眼':
-                                tmp['od'] = cpm
-                            if eye == '左眼':
-                                tmp['os'] = cpm
-                            if eye == '双眼':
-                                tmp['ou'] = cpm
-                        ret_data['af'] = tmp
-                    if item.get('type') == 'fv':
-                        # 近水平聚散度
-                        ret_data['fv'] = item.get('result', '').replace('右眼', 'OD').replace('左眼', 'OS').replace(
-                            '双眼', 'OU').replace('\n', ' ')
-                return ret_data
-            else:
-                raise Exception(f"❌ 获取数据失败！{datetime.now()} status != 0")
-        except Exception as e:
-            retry_count += 1
-            if retry_count < max_retries:
-                sleep_time = retry_delay * (2 ** (retry_count - 1))  # 指数退避
-                logger.warning(f"视光威萌报告 第 {retry_count}/{max_retries} 次重试... {sleep_time} 秒后重试")
-                time.sleep(sleep_time)
-            else:
-                logger.error(f"视光威萌报告 已达最大重试次数 {max_retries}。最后错误: {str(e)}")
-                return {}
+    db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
+                global_config.DB_DATABASE_GYL)
+    report_list = db.query_all(f"SELECT * FROM nsyy_gyl.check_result "
+                               f"WHERE name = '{patient_name}' and check_time like '%{report_date}%' order by check_time")
+    del db
+    if not report_list:
+        return {}
+    ret = {}
+    for item in report_list:
+        value_well = json.loads(item.get('value_well'))
+        if not value_well:
+            continue
+        value_well = json.loads(item.get('value_well'))
+        if item.get('type') == '威萌':
+            ret = {**ret, **value_well}
+        else:
+            ret['af'] = value_well
+    return ret
+
+
+def shiguang_report(patient_name):
+    db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
+                global_config.DB_DATABASE_GYL)
+    report_list = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_check_result WHERE name = '{patient_name}' order by check_time")
+    del db
+    return report_list
+
+

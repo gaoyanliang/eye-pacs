@@ -178,7 +178,6 @@ def get_pdf_orientation(image_path: str) -> Literal['portrait', 'landscape', 'sq
 
 
 def analysis_report_types(saved_jpgs, processor):
-    img = Image.open(saved_jpgs[0])
     for name, info in ehp_config.report_logo.items():
         try:
             joined_text = processor.ocr_image(saved_jpgs[0], info.get('logo'))
@@ -256,8 +255,8 @@ def analysis_pdf(file_path):
                 regions = {
                     "xing": (260, 1172, 670, 1215), "ming": (260, 1220, 670, 1255), "eye": (540, 1310, 680, 1345),
                     "k1": (550, 1525, 680, 1560), "k2": (550, 1587, 680, 1623), "rm": (312, 1650, 440, 1685),
-                    "thinnest_point": (310, 2378, 445, 2412), "depth": (575, 2499, 680, 2535),
-                    "distance": (310, 2620, 440, 2655)
+                    "thinnest_point": (310, 2378, 445, 2412), "depth": (310, 2620, 440, 2655),
+                    "distance": (575, 2499, 680, 2535)
                 }
             else:
                 regions = {
@@ -365,11 +364,11 @@ def analysis_pdf(file_path):
                 }
             else:
                 regions = {
-                    "name": (55, 150, 700, 220), "r_pk1": (450, 1600, 1080, 1670), "r_xk2": (450, 1670, 1080, 1735),
-                    "r_dk3": (450, 1740, 1080, 1800), "r_pe": (450, 1800, 1080, 1870),
-                    "l_pk1": (2150, 1600, 2800, 1670),
-                    "l_xk2": (2150, 1670, 2800, 1735), "l_dk3": (2150, 1740, 2800, 1800),
-                    "l_pe": (2150, 1800, 2800, 1870)
+                    "name": (55, 150, 700, 220), "r_pk1": (450, 1600, 995, 1670), "r_xk2": (450, 1670, 995, 1735),
+                    "r_dk3": (450, 1740, 1080, 1800), "r_pe": (450, 1800, 995, 1870),
+                    "l_pk1": (2150, 1600, 2705, 1670),
+                    "l_xk2": (2150, 1670, 2705, 1735), "l_dk3": (2150, 1740, 2800, 1800),
+                    "l_pe": (2150, 1800, 2705, 1870)
                 }
             for key, region in regions.items():
                 try:
@@ -386,17 +385,55 @@ def analysis_pdf(file_path):
             if 'r_pk1' in ret_data:
                 match = re.search(r'([\d.]+)屈光度', ret_data.get('r_pk1', ''))
                 ret_data['r_pk1'] = match.group(1) if match else ret_data.get('r_pk1', '')
+                if ret_data['r_pk1'] and ret_data['r_pk1'].__contains__("屈光度"):
+                    tmp = ret_data['r_pk1']
+                    tmp = tmp.replace(' ', '').replace('@', '')
+                    tmp = tmp.split('屈光度')
+                    if tmp and len(tmp) > 0:
+                        ret_data['r_pk1'] = tmp[0]
+                    if tmp and len(tmp) > 1:
+                        ret_data['r_pk1_1'] = tmp[1]
+
                 match = re.search(r'([\d.]+)屈光度', ret_data.get('l_pk1', ''))
                 ret_data['l_pk1'] = match.group(1) if match else ret_data.get('l_pk1', '')
+                if ret_data['l_pk1'] and ret_data['l_pk1'].__contains__("屈光度"):
+                    tmp = ret_data['l_pk1']
+                    tmp = tmp.replace(' ', '').replace('@', '')
+                    tmp = tmp.split('屈光度')
+                    if tmp and len(tmp) > 0:
+                        ret_data['l_pk1'] = tmp[0]
+                    if tmp and len(tmp) > 1:
+                        ret_data['l_pk1_1'] = tmp[1]
+
                 match = re.search(r'([\d.]+)屈光度', ret_data.get('r_xk2', ''))
                 ret_data['r_xk2'] = match.group(1) if match else ret_data.get('r_xk2', '')
+                if ret_data['r_xk2'] and ret_data['r_xk2'].__contains__("屈光度"):
+                    tmp = ret_data['r_xk2']
+                    tmp = tmp.replace(' ', '').replace('@', '')
+                    tmp = tmp.split('屈光度')
+                    if tmp and len(tmp) > 0:
+                        ret_data['r_xk2'] = tmp[0]
+                    if tmp and len(tmp) > 1:
+                        ret_data['r_xk2_1'] = tmp[1]
+
                 match = re.search(r'([\d.]+)屈光度', ret_data.get('l_xk2', ''))
                 ret_data['l_xk2'] = match.group(1) if match else ret_data.get('l_xk2', '')
+                if ret_data['l_xk2'] and ret_data['l_xk2'].__contains__("屈光度"):
+                    tmp = ret_data['l_xk2']
+                    tmp = tmp.replace(' ', '').replace('@', '')
+                    tmp = tmp.split('屈光度')
+                    if tmp and len(tmp) > 0:
+                        ret_data['l_xk2'] = tmp[0]
+                    if tmp and len(tmp) > 1:
+                        ret_data['l_xk2_1'] = tmp[1]
+
                 match = re.search(r'([\d.]+)\s*@', ret_data.get('r_pe', ''))
                 ret_data['r_pe'] = match.group(1) if match else ret_data.get('r_pe', '')
                 match = re.search(r'([\d.]+)\s*@', ret_data.get('l_pe', ''))
                 ret_data['l_pe'] = match.group(1) if match else ret_data.get('l_pe', '')
-            if not ret_data.get('r_pk1', '') and  not ret_data.get('l_pk1', '') and not ret_data.get('r_pe', '') and  not ret_data.get('l_pe', ''):
+            if (not ret_data.get('r_pk1', '') and  not ret_data.get('l_pk1', '')
+                    and not ret_data.get('r_pe', '') and  not ret_data.get('l_pe', '')):
+                # 有两种报告，其中一种没有数据 只有图表
                 ret_data.pop('r_pk1')
                 ret_data.pop('l_pk1')
                 ret_data.pop('r_xk2')
@@ -596,7 +633,7 @@ if __name__ == "__main__":
     # file_path = r"E:\pdf_share\眼表综合检查报告42.pdf"
     # file_path = r"E:\pdf_share\眼表综合检查报告43.pdf"
     # file_path = r"E:\pdf_share\眼表综合检查报告44.pdf"
-    # file_path = r"E:\pdf_share\角膜地形图31.pdf"
+    file_path = r"E:\pdf_share\角膜地形图31.pdf"
     # file_path = r"E:\pdf_share\角膜地形图32.pdf"
     # file_path = r"E:\pdf_share\图像总览53.pdf"
     # file_path = r"E:\pdf_share\比较两次检查54.pdf"
@@ -605,13 +642,13 @@ if __name__ == "__main__":
     # file_path = r"E:\pdf_share\眼底照片.pdf"
     # file_path = r"E:\pdf_share\Master700.pdf"
     # file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
-    file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/屈光四图-横版.pdf"
-    file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/Master700.pdf"
+    # file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/屈光四图-横版.pdf"
+    # file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/Master700.pdf"
 
-    final_file_name, machine, values = analysis_pdf(file_path)
-    print(final_file_name)
-    print(machine)
-    print(values)
+    # final_file_name, machine, values = analysis_pdf(file_path)
+    # print(final_file_name)
+    # print(machine)
+    # print(values)
     # #
     # # for k,v in values.items():
     # #     values[k] = str(v).replace('mm', '').replace('μm', '').replace('mm', '')
