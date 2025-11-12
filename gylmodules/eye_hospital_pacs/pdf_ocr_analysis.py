@@ -427,12 +427,12 @@ def analysis_pdf(file_path):
                     if tmp and len(tmp) > 1:
                         ret_data['l_xk2_1'] = tmp[1]
 
-                match = re.search(r'([\d.]+)\s*@', ret_data.get('r_pe', ''))
-                ret_data['r_pe'] = match.group(1) if match else ret_data.get('r_pe', '')
-                match = re.search(r'([\d.]+)\s*@', ret_data.get('l_pe', ''))
-                ret_data['l_pe'] = match.group(1) if match else ret_data.get('l_pe', '')
-            if (not ret_data.get('r_pk1', '') and  not ret_data.get('l_pk1', '')
-                    and not ret_data.get('r_pe', '') and  not ret_data.get('l_pe', '')):
+                match = re.search(r'^\d+(?:\.\d+)?', ret_data.get('r_pe', ''))
+                ret_data['r_pe'] = match.group() if match else ret_data.get('r_pe', '')
+                match = re.search(r'^\d+(?:\.\d+)?', ret_data.get('l_pe', ''))
+                ret_data['l_pe'] = match.group() if match else ret_data.get('l_pe', '')
+            if (not ret_data.get('r_pk1', '') and not ret_data.get('l_pk1', '')
+                    and not ret_data.get('r_pe', '') and not ret_data.get('l_pe', '')):
                 # 有两种报告，其中一种没有数据 只有图表
                 ret_data.pop('r_pk1')
                 ret_data.pop('l_pk1')
