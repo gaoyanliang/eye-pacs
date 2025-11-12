@@ -535,13 +535,14 @@ def analysis_pdf(file_path):
         elif analy_name.__contains__('阿玛仕手术报告'):
             regions = {
                     "xing": (1310, 555, 1600, 625), "ming": (880, 555, 1200, 625), "eye": (300, 500, 430, 630),
-                    "p_k1": (680, 960, 1110, 1025), "p_k2": (680, 1025, 1110, 1090), "diopter": (680, 1360, 1330, 1430),
+                    "p_k1": (680, 960, 1110, 1025), "p_k2": (680, 1025, 1110, 1090), "diopter": (680, 1360, 1280, 1430),
                     "light_area": (1925, 710, 2380, 780), "cut_depth": (1925, 940, 2380, 1020),
                     "cut_time": (700, 1560, 1200, 1625)
                 }
             for key, region in regions.items():
                 try:
                     ret_data[key] = processor.ocr_image(saved_jpgs[0], region)
+                    # print(key, ret_data[key])
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {key} 失败: {e}')
             ret_data['name'] = ret_data.pop('xing', '') + ret_data.pop('ming', '')
@@ -561,7 +562,7 @@ def analysis_pdf(file_path):
                 ret_data['p_k2'] = f"k2 {numbers[0]}"
 
             ret_data[f'corneal_curvate_{eye_type}'] = ret_data.pop('p_k1', '') + " " + ret_data.pop('p_k2', '')
-            ret_data[f'diopter_{eye_type}'] = ret_data.pop('diopter', '')
+            ret_data[f'diopter_{eye_type}'] = ret_data.pop('diopter', '').replace('X', ' ').replace('x', ' ') + '°'
             ret_data[f'light_area_{eye_type}'] = ret_data.pop('light_area', '')
             ret_data[f'cut_depth_{eye_type}'] = ret_data.pop('cut_depth', '')
             ret_data[f'cut_time_{eye_type}'] = ret_data.pop('cut_time', '')
