@@ -127,7 +127,8 @@ class OCRProcessor:
                 return ''
 
             # 保存裁剪图（可选）
-            # save_path = os.path.join(output_dir, f"{field_name}_cropped.jpg")
+            # save_path = os.path.join('/Users/gaoyanliang/nsyy/eye-pacs/gylmodules/eye_hospital_pacs/output_jpg',
+            #                          f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}_cropped.jpg")
             # cv2.imwrite(save_path, cropped)
 
             # OCR 识别
@@ -367,12 +368,13 @@ def analysis_pdf(file_path):
                     "name": (55, 150, 700, 220), "r_pk1": (450, 1600, 995, 1670), "r_xk2": (450, 1670, 995, 1735),
                     "r_dk3": (450, 1740, 1080, 1800), "r_pe": (450, 1800, 995, 1870),
                     "l_pk1": (2150, 1600, 2705, 1670),
-                    "l_xk2": (2150, 1670, 2705, 1735), "l_dk3": (2150, 1740, 2800, 1800),
+                    "l_xk2": (2150, 1665, 2705, 1739), "l_dk3": (2150, 1740, 2800, 1800),
                     "l_pe": (2150, 1800, 2705, 1870)
                 }
             for key, region in regions.items():
                 try:
                     ret_data[key] = processor.ocr_image(saved_jpgs[0], region)
+                    # print(key, ret_data[key])
                 except Exception as e:
                     print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {key} 失败: {e}')
 
@@ -385,14 +387,12 @@ def analysis_pdf(file_path):
             if 'r_pk1' in ret_data:
                 match = re.search(r'([\d.]+)屈光度', ret_data.get('r_pk1', ''))
                 ret_data['r_pk1'] = match.group(1) if match else ret_data.get('r_pk1', '')
-                if ret_data['r_pk1'] and ret_data['r_pk1'].__contains__("屈光度"):
-                    tmp = ret_data['r_pk1']
-                    tmp = tmp.replace(' ', '').replace('@', '')
-                    tmp = tmp.split('屈光度')
-                    if tmp and len(tmp) > 0:
-                        ret_data['r_pk1'] = tmp[0]
-                    if tmp and len(tmp) > 1:
-                        ret_data['r_pk1_1'] = tmp[1]
+                if ret_data['r_pk1']:
+                    numbers = re.findall(r'(?<!\()\b\d+\.?\d*\b(?!\))', ret_data['r_pk1'])
+                    if len(numbers) >= 1:
+                        ret_data['r_pk1'] = numbers[0]
+                    if len(numbers) >= 2:
+                        ret_data['r_pk1_1'] = numbers[1]
 
                 match = re.search(r'([\d.]+)屈光度', ret_data.get('l_pk1', ''))
                 ret_data['l_pk1'] = match.group(1) if match else ret_data.get('l_pk1', '')
@@ -644,7 +644,8 @@ if __name__ == "__main__":
     # file_path = r"E:\pdf_share\阿玛仕手术报告.pdf"
     # file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/屈光四图-横版.pdf"
     # file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/Master700.pdf"
-
+    # file_path = "/Users/gaoyanliang/Downloads/3 (2)_20251111101643.pdf"
+    #
     # final_file_name, machine, values = analysis_pdf(file_path)
     # print(final_file_name)
     # print(machine)
