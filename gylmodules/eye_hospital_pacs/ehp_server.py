@@ -329,9 +329,13 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
                         "thickness_od": merged_dict.get('r_cct', ''),
                         "thickness_os": merged_dict.get('l_cct', ''),
                         "curvature_k1_od": merged_dict.get('r_pk1', ''),
+                        "curvature_k1_m": merged_dict.get('r_pk1_1', ''),
                         "curvature_k1_os": merged_dict.get('l_pk1', ''),
+                        "curvature_k1_m1": merged_dict.get('l_pk1_1', ''),
                         "curvature_k2_od": merged_dict.get('r_xk2', ''),
+                        "curvature_k2_m": merged_dict.get('r_xk2_1', ''),
                         "curvature_k2_os": merged_dict.get('l_xk2', ''),
+                        "curvature_k2_m1": merged_dict.get('l_xk2_1', ''),
                     }
                 },
                 "TransPRK/FS_LASIK手术记录": {
@@ -513,12 +517,14 @@ def query_patient_info(key, guahao_id, date_str):
     local_record = []
     if not guahao_id:
         condition_sql = " and (name like '%{key}%' or id_card_no like '%{key}%' or phone_num like '%{key}%' or home_addr like '%{key}%') " if key else ""
+        if date_str:
+            condition_sql = condition_sql + f" and visit_date = '{date_str}'"
         db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                     global_config.DB_DATABASE_GYL)
         query_sql = (f"select register_id 挂号id, register_id 病人id, register_id 门诊号, name AS 患者姓名, "
                      f"gender 性别, age 年龄, visit_dept AS 就诊科室, doc_name AS 医生姓名, last_visit_time as 就诊日期, "
                      f"birth_date as 出生日期, phone_num 联系电话, id_card_no 身份证号  "
-                     f"from nsyy_gyl.ehp_patients where visit_date = '{date_str}' and is_deleted = 0 {condition_sql}" )
+                     f"from nsyy_gyl.ehp_patients where is_deleted = 0 {condition_sql}" )
         local_record = db.query_all(query_sql)
         del db
         if not local_record:
@@ -531,7 +537,7 @@ def query_patient_info(key, guahao_id, date_str):
 
     condition_sql = ''
     if date_str:
-        condition_sql = " AND TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') "
+        condition_sql = " and TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') "
     if key:
         sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
                 a.执行人 AS 医生姓名, a.发生时间 as 就诊日期, TO_CHAR(c.出生日期, 'YYYY/MM/DD') as 出生日期, c.家庭电话 联系电话, c.身份证号, c.家庭地址 现住址
