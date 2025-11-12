@@ -99,7 +99,7 @@ class OCRProcessor:
                     )
                 else:
                     self._ocr_engine = PaddleOCR(
-                        lang="ch",
+                        # lang="ch",
                         use_textline_orientation=False,
                         use_doc_orientation_classify=False,
                         use_doc_unwarping=False,

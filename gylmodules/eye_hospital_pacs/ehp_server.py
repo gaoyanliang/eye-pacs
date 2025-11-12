@@ -516,7 +516,7 @@ def query_patient_info(key, guahao_id, date_str):
     # 查询自主添加的患者
     local_record = []
     if not guahao_id:
-        condition_sql = " and (name like '%{key}%' or id_card_no like '%{key}%' or phone_num like '%{key}%' or home_addr like '%{key}%') " if key else ""
+        condition_sql = f" and (name like '%{key}%' or id_card_no like '%{key}%' or phone_num like '%{key}%' or home_addr like '%{key}%') " if key else ""
         if date_str:
             condition_sql = condition_sql + f" and visit_date = '{date_str}'"
         db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
@@ -537,7 +537,7 @@ def query_patient_info(key, guahao_id, date_str):
 
     condition_sql = ''
     if date_str:
-        condition_sql = " and TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') "
+        condition_sql = f" and TRUNC(a.发生时间) = TO_DATE('{date_str}', 'YYYY-MM-DD') "
     if key:
         sql = f"""SELECT a.id 挂号id, a.病人id, a.门诊号, a.姓名 AS 患者姓名, a.性别, a.年龄, b.名称 AS 就诊科室, 
                 a.执行人 AS 医生姓名, a.发生时间 as 就诊日期, TO_CHAR(c.出生日期, 'YYYY/MM/DD') as 出生日期, c.家庭电话 联系电话, c.身份证号, c.家庭地址 现住址
