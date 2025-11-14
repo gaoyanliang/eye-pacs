@@ -287,7 +287,10 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
     for item in shiguang_reports:
         if item.get('check_time').__contains__(report_date):
             tmp = item.get('value_well')
-            shiguang_data = {**shiguang_data, **tmp}
+            if item.get('type') == '翻转拍':
+                shiguang_data['af'] = tmp
+            else:
+                shiguang_data = {**shiguang_data, **tmp}
 
     return {"report_list": {
                         'bind_report': report_group,
