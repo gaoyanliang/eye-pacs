@@ -601,7 +601,7 @@ def regularly_parsing_eye_report():
             if not values:
                 values = {"res": "analysis failed"}
 
-            report_name = f"{final_file_name}-{patient_name}.pdf"
+            report_name = f"{final_file_name}-{patient_name}-{report.get('report_time').strftime('%Y-%m-%d_%H:%M:%S')}.pdf"
             report_value = json.dumps(values, ensure_ascii=False, default=str) if values else ''
 
             bind_sql = ""

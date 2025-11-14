@@ -159,6 +159,14 @@ def update_medical_record_detail(json_data):
     table_value = json_data.get('table_value')
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
+    record = db.query_one(f"SELECT * FROM nsyy_gyl.ehp_medical_record_list where record_id = {record_detail_id}")
+    if not record:
+        del db
+        raise Exception("病历不存在! ")
+    if record.get('record_status') == 2 and not record.get('record_name').__contains__("复查记录"):
+        del db
+        raise Exception("病历已归档 不允许再修改! ")
+
     try:
         update_sql = f"""UPDATE nsyy_gyl.ehp_medical_record_list 
         SET table_value = '{json.dumps(table_value, default=str, ensure_ascii=False)}' where record_id = {record_detail_id}"""
