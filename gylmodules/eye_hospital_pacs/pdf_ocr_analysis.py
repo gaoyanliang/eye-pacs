@@ -620,6 +620,29 @@ def regularly_parsing_eye_report():
     del db
 
 
+"""解析翻转拍网站验证码"""
+
+
+def ocr_captcha(img_b64):
+    if not img_b64:
+        return ''
+    import base64
+    try:
+        img_bytes = base64.b64decode(img_b64)
+        # 保存图像文件以便调试
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        image_filename = f"captcha_image_{timestamp}.png"
+        """保存图像文件"""
+        with open(image_filename, 'wb') as f:
+            f.write(img_bytes)
+
+        processor = OCRProcessor()
+        ret_data = processor.ocr_engine.predict(image_filename)
+        return ret_data
+    except Exception as e:
+        return ''
+
+
 if __name__ == "__main__":
     start_time = time.time()
     file_path = r"E:\pdf_share\屈光四图-横版.pdf"

@@ -143,3 +143,10 @@ def patient_info(json_data):
     if not json_data.get('guahao_id', ''):
         patient_list = sorted(patient_list, key=lambda x: x['就诊日期'].strftime("%Y-%m-%d %H:%M:%S"))
     return patient_list
+
+
+@ehp_system.route('/captcha', methods=['POST', 'GET'])
+@api_response
+def captcha(json_data):
+    return pdf_ocr_analysis.ocr_captcha(json_data.get('img_b64', ''))
+
