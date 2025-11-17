@@ -285,7 +285,9 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
             report['value_well'] = json.loads(report['value_well']) if report['value_well'] else {}
     shiguang_data = {}
     for item in shiguang_reports:
-        if item.get('check_time').__contains__(report_date):
+        if item.get('type') == '翻转拍':
+            item['value_well'] = {'af': item.get('value_well')}
+        if item.get('check_time').__contains__(report_date or ''):
             tmp = item.get('value_well')
             if item.get('type') == '翻转拍':
                 shiguang_data['af'] = tmp
@@ -459,7 +461,7 @@ def update_and_bind_report(file_name, file_path, register_id, patient_id):
 
     insert_sql = f"""INSERT INTO nsyy_gyl.ehp_reports (report_name, report_addr, report_time, 
     patient_id, register_id, report_machine) VALUES ('{file_name}', '{file_path}', 
-    '{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', '{patient_id}', '{register_id}', '人工上传')"""
+    '{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', '{register_id}', '{patient_id}', '人工上传')"""
     db.execute(insert_sql, need_commit=True)
     del db
 
@@ -650,8 +652,8 @@ def auto_bind_report():
             if patient_name:
                 patients = query_patient_by_name(patient_name)
                 if patients:
-                    register_id = patients[0].get('挂号id')
-                    patient_id = patients[0].get('门诊号')
+                    register_id = patients[0].get('门诊号')
+                    patient_id = patients[0].get('挂号id')
                     db.execute(f"UPDATE nsyy_gyl.ehp_reports SET register_id = '{register_id}', patient_id = '{patient_id}'"
                                f"WHERE report_id = {report.get('report_id')}", need_commit=True)
         del db
