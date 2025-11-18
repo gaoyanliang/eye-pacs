@@ -587,6 +587,7 @@ def analysis_pdf(file_path):
         print(f"{datetime.now()} {file_path} 解析报告异常 {e}")
 
     for k, v in ret_data.items():
+        ret_data[k] = str(v).replace('mm', '')
         if str(v).endswith('s') or str(v).endswith('um') or str(v).endswith('mm') or str(v).endswith('μm') \
                 or str(v).endswith('毫米') or str(v).endswith('微米') or str(v).endswith('D') \
                 or str(v).endswith('x') or str(v).endswith('Dx'):
