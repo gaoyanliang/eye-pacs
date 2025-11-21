@@ -240,6 +240,10 @@ def analysis_report_types(saved_jpgs, processor):
                     joined_text.__contains__("number")):
                 # Laser serial number
                 return name, info.get('machine')
+            elif name.__contains__("OCT") and (joined_text.lower().__contains__("intalight") or joined_text.lower().__contains__("intai") or
+                    joined_text.lower().__contains__("ght")):
+                # Laser serial number
+                return name, info.get('machine')
         except Exception as e:
             print(datetime.now(), f'解析 {saved_jpgs[0]} 标识失败: {e}')
     return '', "未收录设备"
@@ -581,6 +585,27 @@ def analysis_pdf(file_path):
             ret_data[f'light_area_{eye_type}'] = ret_data.pop('light_area', '')
             ret_data[f'cut_depth_{eye_type}'] = ret_data.pop('cut_depth', '')
             ret_data[f'cut_time_{eye_type}'] = ret_data.pop('cut_time', '')
+        elif analy_name.__contains__('OCT'):
+            # 区分横版/竖版
+            if analy_name.__contains__('竖'):
+                regions = {"name": (130, 130, 350, 195), "eye": (20, 20, 250, 125)}
+            else:
+                regions = {"name": (120, 110, 330, 170), "eye": (20, 20, 230, 105)}
+            for key, region in regions.items():
+                try:
+                    ret_data[key] = processor.ocr_image(saved_jpgs[0], region)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {key} 失败: {e}')
+            ret_data['name'] = ret_data.get('name', '').replace(' ', '').replace(',', '') \
+                .replace('，', '').replace('.', '').replace('。', '')
+            if ret_data['eye'].__contains__('OS') or ret_data['eye'].__contains__('os') or \
+                    ret_data['eye'].__contains__('L'):
+                final_file_name = f"{final_file_name}-左眼"
+            elif ret_data['eye'].__contains__('OD') or ret_data['eye'].__contains__('od') or \
+                    ret_data['eye'].__contains__('R'):
+                final_file_name = f"{final_file_name}-右眼"
+            else:
+                final_file_name = f"{final_file_name}-双眼"
         else:
            print(f"{datetime.now()} {file_path} 暂不支持解析")
     except Exception as e:
@@ -686,6 +711,17 @@ if __name__ == "__main__":
     # file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/屈光四图-横版.pdf"
     # file_path = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/Master700.pdf"
     # file_path = "/Users/gaoyanliang/Downloads/3 (2)_20251111101643.pdf"
+
+    # file_path = "/Users/gaoyanliang/Downloads/房角OCT-右眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/房角OCT-左眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/黄斑OCT.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/频域前节OCT拱高测量-右眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/频域前节OCT拱高测量-左眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/前节OCT-右眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/前节OCT-左眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/血流OCT-右眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/血流OCT-左眼.pdf"
+    # file_path = "/Users/gaoyanliang/Downloads/视神经OCT.pdf"
     #
     # final_file_name, machine, values = analysis_pdf(file_path)
     # print(final_file_name)
