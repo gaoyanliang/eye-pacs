@@ -611,7 +611,7 @@ def analysis_pdf(file_path):
                 final_file_name = f"{final_file_name}-双眼"
         elif analy_name.__contains__('B超报告单'):
             # 区分横版/竖版
-            regions = {"name": (230, 260, 610, 400)}
+            regions = {"name": (230, 260, 700, 400)}
             for key, region in regions.items():
                 try:
                     ret_data[key] = processor.ocr_image(saved_jpgs[0], region)
@@ -621,9 +621,9 @@ def analysis_pdf(file_path):
             name = ret_data.get('name')
             match = re.search(r"姓名[:：](\w+)", name)
             if match:
-                ret_data['name'] = name
-            ret_data['name'] = ret_data.get('name', '').replace(' ', '').replace(',', '') \
-                .replace('，', '').replace('.', '').replace('。', '')
+                ret_data['name'] = match.group(1)
+            ret_data['name'] = ret_data.get('name', '').replace(':', '').replace('：', '') \
+                .replace('性', '').replace('别', '')
         else:
            print(f"{datetime.now()} {file_path} 暂不支持解析")
     except Exception as e:
