@@ -244,6 +244,9 @@ def analysis_report_types(saved_jpgs, processor):
                     joined_text.lower().__contains__("ght")):
                 # Laser serial number
                 return name, info.get('machine')
+            elif name.__contains__("B超报告单") and (joined_text.lower().__contains__("B超") or joined_text.lower().__contains__("报告单")):
+                # B超报告单
+                return name, info.get('machine')
         except Exception as e:
             print(datetime.now(), f'解析 {saved_jpgs[0]} 标识失败: {e}')
     return '', "未收录设备"
@@ -606,13 +609,27 @@ def analysis_pdf(file_path):
                 final_file_name = f"{final_file_name}-右眼"
             else:
                 final_file_name = f"{final_file_name}-双眼"
+        elif analy_name.__contains__('B超报告单'):
+            # 区分横版/竖版
+            regions = {"name": (230, 260, 610, 400)}
+            for key, region in regions.items():
+                try:
+                    ret_data[key] = processor.ocr_image(saved_jpgs[0], region)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {key} 失败: {e}')
+
+            name = ret_data.get('name')
+            match = re.search(r"姓名[:：](\w+)", name)
+            if match:
+                ret_data['name'] = name
+            ret_data['name'] = ret_data.get('name', '').replace(' ', '').replace(',', '') \
+                .replace('，', '').replace('.', '').replace('。', '')
         else:
            print(f"{datetime.now()} {file_path} 暂不支持解析")
     except Exception as e:
         print(f"{datetime.now()} {file_path} 解析报告异常 {e}")
 
     for k, v in ret_data.items():
-        ret_data[k] = str(v).replace('mm', '')
         if str(v).endswith('s') or str(v).endswith('um') or str(v).endswith('mm') or str(v).endswith('μm') \
                 or str(v).endswith('毫米') or str(v).endswith('微米') or str(v).endswith('D') \
                 or str(v).endswith('x') or str(v).endswith('Dx'):
