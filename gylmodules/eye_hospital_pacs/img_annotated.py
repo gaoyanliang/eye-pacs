@@ -184,6 +184,7 @@ pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医�
 # 血流OCT-右眼.pdf
 # 血流OCT-左眼.pdf
 pdf_file = "/Users/gaoyanliang/Downloads/黄斑OCT.pdf"
+pdf_file = r"E:\pdf_share\B超报告单1.pdf"
 
 output_directory = "."  # 替换为你的输出目录
 saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
@@ -369,6 +370,9 @@ coordinates = [[20, 20], [250, 20], [250, 125], [20, 125]]  # 左右眼
 # coordinates = [[120, 110], [330, 110], [330, 170], [120, 170]]  # 患者姓名
 
 
+# B超报告单.pdf"
+coordinates = [[1530, 140], [2000, 140], [2000, 270], [1530, 270]]  # 标识
+coordinates = [[230, 260], [610, 260], [610, 400], [230, 400]]  # 患者姓名
 
 
 annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
