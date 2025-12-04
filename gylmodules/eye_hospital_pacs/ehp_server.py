@@ -4,8 +4,6 @@ import re
 import time
 from datetime import datetime
 
-import requests
-
 from gylmodules import global_config
 from gylmodules.eye_hospital_pacs import ehp_config
 from gylmodules.utils.db_utils import DbUtil
@@ -196,13 +194,13 @@ def delete_medical_record(json_data):
 """查询病历列表"""
 
 
-def query_medical_list(register_id):
+def query_medical_list(patient_id):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
 
     record_data = db.query_all(f"SELECT register_id, record_id, record_id as record_detail_id, record_name, "
-                               f"record_status, table_id, table_name FROM nsyy_gyl.ehp_medical_record_list "
-                               f"WHERE register_id = '{register_id}'")
+                               f"record_status, table_id, table_name, record_time FROM nsyy_gyl.ehp_medical_record_list "
+                               f"WHERE patient_id = '{patient_id}'")
     del db
 
     merged = {}
@@ -215,6 +213,7 @@ def query_medical_list(register_id):
                 "register_id": record["register_id"],
                 "record_id": record["record_id"],
                 "record_name": record["record_name"],
+                "record_time": record["record_time"],
                 "record_status": record["record_status"],
                 "tabs": []  # 存储 {table_id, table_name} 字典
             }
@@ -273,7 +272,9 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
                 report_group[report.get('year')] = []
             report_group[report.get('year')].append(report)
 
-            if report.get("report_value"):
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if (report.get("report_value") and report.get("report_time")
+                    and report.get("report_time").strftime('%Y-%m-%d %H:%M:%S').__contains__(report_date)):
                 report_value = json.loads(report.pop('report_value'))
                 merged_dict = {**merged_dict, **report_value}
         else:
@@ -283,8 +284,12 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
     if shiguang_reports:
         for report in shiguang_reports:
             report['value_well'] = json.loads(report['value_well']) if report['value_well'] else {}
+            if report.get('type') == '翻转拍':
+                report['value_well'] = {'af': report['value_well']}
     shiguang_data = {}
     for item in shiguang_reports:
+        if not item.get('check_time') or not item.get('check_time').__contains__(report_date):
+            continue
         if item.get('type') == '翻转拍':
             item['value_well'] = {'af': item.get('value_well')}
         if item.get('check_time').__contains__(report_date or ''):
@@ -652,8 +657,8 @@ def auto_bind_report():
             if patient_name:
                 patients = query_patient_by_name(patient_name)
                 if patients:
-                    register_id = patients[0].get('门诊号')
-                    patient_id = patients[0].get('挂号id')
+                    register_id = patients[0].get('挂号id')
+                    patient_id = patients[0].get('病人id')
                     db.execute(f"UPDATE nsyy_gyl.ehp_reports SET register_id = '{register_id}', patient_id = '{patient_id}'"
                                f"WHERE report_id = {report.get('report_id')}", need_commit=True)
         del db

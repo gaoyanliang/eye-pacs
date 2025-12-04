@@ -52,9 +52,8 @@ def delete_medical_record(json_data):
 
 @ehp_system.route('/query_medical_list', methods=['POST', 'GET'])
 @api_response
-@validate_params('register_id')
 def query_medical_list(json_data):
-    return ehp_server.query_medical_list(json_data.get('register_id'))
+    return ehp_server.query_medical_list(json_data.get('patient_id'))
 
 
 @ehp_system.route('/query_medical_record', methods=['POST', 'GET'])
@@ -79,14 +78,14 @@ def query_history_reports():
 @ehp_system.route('/bind_report', methods=['POST', 'GET'])
 @api_response
 def bind_report(json_data):
-    return ehp_server.bind_report(json_data.get('report_id'), json_data.get('patient_id', ''),
-                                  json_data.get('register_id', ''))
+    return ehp_server.bind_report(json_data.get('report_id'), json_data.get('register_id', ''),
+                                  json_data.get('patient_id', ''))
 
 
 @ehp_system.route('/place_on_file', methods=['POST', 'GET'])
 @api_response
 def place_on_file(json_data):
-    return ehp_server.place_on_file(json_data.get('patient_id'), json_data.get('register_id'), json_data.get('is_complete'))
+    return ehp_server.place_on_file(json_data.get('register_id'), json_data.get('patient_id'), json_data.get('is_complete'))
 
 
 @ehp_system.route('/report/<file_path>', methods=['POST', 'GET'])
@@ -142,6 +141,8 @@ def patient_info(json_data):
                                          json_data.get('guahao_id', ''), json_data.get('date_str', ''))
     if not json_data.get('guahao_id', ''):
         patient_list = sorted(patient_list, key=lambda x: x['就诊日期'].strftime("%Y-%m-%d %H:%M:%S"))
+        for item in patient_list:
+            item['就诊日期'] = item['就诊日期'].strftime("%Y-%m-%d %H:%M:%S")
     return patient_list
 
 
