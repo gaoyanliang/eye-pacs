@@ -20,7 +20,7 @@ def new_patient(json_data):
 @ehp_system.route('/delete_patient', methods=['POST'])
 @api_response
 def delete_patient(json_data):
-    ehp_server.delete_patient(json_data.get("register_id"))
+    ehp_server.delete_patient(json_data)
 
 
 @ehp_system.route('/ehp_data', methods=['POST'])
@@ -60,6 +60,12 @@ def query_medical_list(json_data):
 @api_response
 def query_medical_record(json_data):
     return ehp_server.query_medical_record(json_data.get('record_detail_id'))
+
+
+@ehp_system.route('/query_medical_change_log', methods=['POST', 'GET'])
+@api_response
+def medical_change_log(json_data):
+    return ehp_server.query_medical_change_log(json_data)
 
 
 @ehp_system.route('/query_reports', methods=['POST', 'GET'])

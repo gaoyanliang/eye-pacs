@@ -3,6 +3,7 @@ import logging
 import re
 import time
 from datetime import datetime
+from typing import Dict, Any, List
 
 from gylmodules import global_config
 from gylmodules.eye_hospital_pacs import ehp_config
@@ -79,9 +80,10 @@ def new_patient(json_data):
     record_data['last_visit_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     record_data['visit_date'] = datetime.now().strftime('%Y-%m-%d')
     record_data['home_addr'] = json_data.get('home_addr', '')
+    record_data['operator_account'] = json_data.get('operator_account', '')
+    record_data['operator_name'] = json_data.get('operator_name', '')
 
     try:
-
         insert_sql = f"INSERT INTO nsyy_gyl.ehp_patients ({','.join(record_data.keys())}) " \
                      f"VALUES {str(tuple(record_data.values()))}"
         record_id = db.execute(sql=insert_sql, need_commit=True)
@@ -97,15 +99,22 @@ def new_patient(json_data):
 """删除自己创建的患者"""
 
 
-def delete_patient(register_id):
+def delete_patient(json_data):
+    register_id = json_data.get("register_id")
+    if not register_id:
+        raise Exception("请选择要删除的患者")
+
+    operator_account = json_data.get("operator_account", '')
+    operator_name = json_data.get("operator_name", '')
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
-    delete_sql = f"update nsyy_gyl.ehp_patients set is_deleted = 1 where register_id = {register_id} "
+    delete_sql = (f"update nsyy_gyl.ehp_patients set is_deleted = 1, operator_account = '{operator_account}', "
+                  f"operator_name = '{operator_name}'  where register_id = {register_id} ")
     db.execute(delete_sql, need_commit=True)
     del db
 
 
-"""创建/更新病历"""
+"""创建病历"""
 
 
 def create_medical_record(json_data):
@@ -114,42 +123,38 @@ def create_medical_record(json_data):
 
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
+    if not record_id:
+        # 新增病历
+        record_data['register_id'] = json_data.get('register_id')
+        if json_data.get('patient_id'):
+            record_data['patient_id'] = json_data.get('patient_id')
+        record_data['patient_name'] = json_data.get('patient_name')
+        record_data['record_name'] = json_data.get('record_name')
+        record_data['record_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        record_data['last_update_time'] = record_data['record_time']
+        record_data['operator_account'] = json_data.get('operator_account', '')
+        record_data['operator_name'] = json_data.get('operator_name', '')
 
-    try:
-        if not record_id:
-            # 新增病历
-            record_data['register_id'] = json_data.get('register_id')
-            if json_data.get('patient_id'):
-                record_data['patient_id'] = json_data.get('patient_id')
-            record_data['patient_name'] = json_data.get('patient_name')
-            record_data['record_name'] = json_data.get('record_name')
-            record_data['record_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            record_data['last_update_time'] = record_data['record_time']
+        if json_data.get('data'):
+            data = json_data.get('data')
+            data = data[0]
+            record_data['table_id'] = data.get('table_id')
+            record_data['table_name'] = data.get('table_name')
+            record_data['table_value'] = json.dumps(data, default=str, ensure_ascii=False)
 
-            if json_data.get('data'):
-                data =  json_data.get('data')
-                data = data[0]
-                record_data['table_id'] = data.get('table_id')
-                record_data['table_name'] = data.get('table_name')
-                record_data['table_value'] = json.dumps(data, default=str, ensure_ascii=False)
-
-            record_sql = f"INSERT INTO nsyy_gyl.ehp_medical_record_list ({','.join(record_data.keys())}) " \
-                         f"VALUES {str(tuple(record_data.values()))}"
-            record_id = db.execute(sql=record_sql, need_commit=True)
-            if record_id == -1:
-                del db
-                raise Exception("患者病历创建失败! ", record_sql)
-        else:
-            db.execute(f"UPDATE nsyy_gyl.ehp_medical_record_list "
-                       f"SET last_update_time = '{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}' "
-                       f"WHERE record_id = {record_id}", need_commit=True)
-
+        record_sql = f"INSERT INTO nsyy_gyl.ehp_medical_record_list ({','.join(record_data.keys())}) " \
+                     f"VALUES {str(tuple(record_data.values()))}"
+        record_id = db.execute(sql=record_sql, need_commit=True)
+        if record_id == -1:
+            del db
+            raise Exception("患者病历创建失败! ", record_sql)
+    else:
         del db
-    except Exception as e:
-        raise Exception("新增病历异常! ", e)
+        raise Exception("请选择要更新的病历")
+    del db
 
 
-"""更新创建过的tab表单"""
+"""更新病历"""
 
 
 def update_medical_record_detail(json_data):
@@ -157,7 +162,7 @@ def update_medical_record_detail(json_data):
     table_value = json_data.get('table_value')
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
-    record = db.query_one(f"SELECT * FROM nsyy_gyl.ehp_medical_record_list where record_id = {record_detail_id}")
+    record = db.query_one(f"SELECT * FROM nsyy_gyl.ehp_medical_record_list where record_id = {record_detail_id} and record_status != 3")
     if not record:
         del db
         raise Exception("病历不存在! ")
@@ -166,9 +171,23 @@ def update_medical_record_detail(json_data):
         raise Exception("病历已归档 不允许再修改! ")
 
     try:
-        update_sql = f"""UPDATE nsyy_gyl.ehp_medical_record_list 
-        SET table_value = '{json.dumps(table_value, default=str, ensure_ascii=False)}' where record_id = {record_detail_id}"""
+        update_sql = f"""UPDATE nsyy_gyl.ehp_medical_record_list SET table_value 
+        = '{json.dumps(table_value, default=str, ensure_ascii=False)}' where record_id = {record_detail_id}"""
         db.execute(update_sql, need_commit=True)
+
+        old_value = json.loads(record['table_value']) if record['table_value'] else {}
+        diff_log = compare_medical_record(old_value, table_value)
+
+        change_log = {
+            "record_id": record_detail_id,
+            "operator_account": json_data.get('operator_account', ''),
+            "operator_name": json_data.get('operator_name', ''),
+            "operate_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "change_log": json.dumps(diff_log, default=str, ensure_ascii=False)
+        }
+        insert_sql = f"INSERT INTO nsyy_gyl.ehp_medical_change_log ({','.join(change_log.keys())}) " \
+                     f"VALUES {str(tuple(change_log.values()))}"
+        db.execute(sql=insert_sql, need_commit=True)
         del db
     except Exception as e:
         del db
@@ -183,7 +202,9 @@ def delete_medical_record(json_data):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     try:
-        update_sql = f"""delete from nsyy_gyl.ehp_medical_record_list where record_id = {record_detail_id}"""
+        update_sql = f"""update nsyy_gyl.ehp_medical_record_list set record_status = 3, 
+        operator_account = '{json_data.get('operator_account', '')}', 
+        operator_name = '{json_data.get('operator_name', '')}' where record_id = {record_detail_id}"""
         db.execute(update_sql, need_commit=True)
         del db
     except Exception as e:
@@ -200,7 +221,7 @@ def query_medical_list(patient_id):
 
     record_data = db.query_all(f"SELECT register_id, record_id, record_id as record_detail_id, record_name, "
                                f"record_status, table_id, table_name, record_time FROM nsyy_gyl.ehp_medical_record_list "
-                               f"WHERE patient_id = '{patient_id}'")
+                               f"WHERE patient_id = '{patient_id}' and record_status != 3")
     del db
 
     merged = {}
@@ -226,6 +247,24 @@ def query_medical_list(patient_id):
         })
 
     return list(merged.values())
+
+
+"""查询病历操作日志"""
+
+
+def query_medical_change_log(json_data):
+    record_id = json_data.get('record_id')
+    if not record_id:
+        raise Exception("请选择要查询的病历")
+    db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
+                global_config.DB_DATABASE_GYL)
+    record_data = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_medical_change_log WHERE record_id = {record_id}")
+    del db
+
+    for item in record_data:
+        item['log'] = json.loads(item['log']) if item['log'] else []
+
+    return record_data
 
 
 """查询病历详情"""
@@ -699,4 +738,84 @@ def shiguang_report(patient_name):
     del db
     return report_list
 
+
+
+
+"""
+比较两份病历 JSON 数据，返回所有变更的详细日志列表。
+
+参数:
+    old_record: 修改前的病历数据（dict）
+    new_record: 修改后的病历数据（dict）
+    current_path: 当前字段路径（用于递归，首次调用留空）
+
+返回:
+    List[Dict] 每个元素包含：
+        - path       : 变更字段的完整路径（如 "optometry_od" 或 "other_check.addon.axial_od"）
+        - action     : 操作类型 "add"（新增）、"modify"（修改）、"delete"（删除）
+        - old_value  : 旧值（新增时为 None）
+        - new_value  : 新值（删除时为 None）
+"""
+
+def compare_medical_record(
+    old_record: Dict[str, Any],
+    new_record: Dict[str, Any],
+    current_path: str = ""
+) -> List[Dict[str, Any]]:
+    changes = []
+
+    # 构造当前字段的完整路径
+    def build_path(key: str) -> str:
+        return f"{current_path}.{key}" if current_path else key
+
+    # 1. 旧数据有但新数据没有 → 被删除的字段
+    for key in old_record.keys() - new_record.keys():
+        full_path = build_path(key)
+        changes.append({
+            "path": full_path,
+            "action": "delete",
+            "old_value": old_record[key],
+            "new_value": None
+        })
+
+    # 2. 新数据有但旧数据没有 → 新增的字段
+    for key in new_record.keys() - old_record.keys():
+        full_path = build_path(key)
+        changes.append({
+            "path": full_path,
+            "action": "add",
+            "old_value": None,
+            "new_value": new_record[key]
+        })
+
+    # 3. 双方都有的字段 → 判断是否修改（包括嵌套 dict 和 list）
+    for key in old_record.keys() & new_record.keys():
+        full_path = build_path(key)
+        old_val = old_record[key]
+        new_val = new_record[key]
+
+        # 如果都是字典，递归比较
+        if isinstance(old_val, dict) and isinstance(new_val, dict):
+            changes.extend(compare_medical_record(old_val, new_val, full_path))
+
+        # 如果都是列表（比如 know_way、follow_time 等多选字段）
+        elif isinstance(old_val, list) and isinstance(new_val, list):
+            if old_val != new_val:  # 列表内容有变化
+                changes.append({
+                    "path": full_path,
+                    "action": "modify",
+                    "old_value": old_val,
+                    "new_value": new_val
+                })
+
+        # 其他类型（str、int、None 等）直接比较
+        elif old_val != new_val:
+            changes.append({
+                "path": full_path,
+                "action": "modify",
+                "old_value": old_val,
+                "new_value": new_val
+            })
+
+    return changes
 
