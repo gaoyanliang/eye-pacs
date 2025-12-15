@@ -171,23 +171,25 @@ def update_medical_record_detail(json_data):
         raise Exception("病历已归档 不允许再修改! ")
 
     try:
-        update_sql = f"""UPDATE nsyy_gyl.ehp_medical_record_list SET table_value 
-        = '{json.dumps(table_value, default=str, ensure_ascii=False)}' where record_id = {record_detail_id}"""
+        update_sql = f"""UPDATE nsyy_gyl.ehp_medical_record_list SET last_update_time = '{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}',
+         table_value = '{json.dumps(table_value, default=str, ensure_ascii=False)}', 
+         operator_account = '{json_data.get('operator_account', '')}',
+          operator_name = '{json_data.get('operator_name', '')}' where record_id = {record_detail_id}"""
         db.execute(update_sql, need_commit=True)
 
         old_value = json.loads(record['table_value']) if record['table_value'] else {}
         diff_log = compare_medical_record(old_value, table_value)
-
-        change_log = {
-            "record_id": record_detail_id,
-            "operator_account": json_data.get('operator_account', ''),
-            "operator_name": json_data.get('operator_name', ''),
-            "operate_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "change_log": json.dumps(diff_log, default=str, ensure_ascii=False)
-        }
-        insert_sql = f"INSERT INTO nsyy_gyl.ehp_medical_change_log ({','.join(change_log.keys())}) " \
-                     f"VALUES {str(tuple(change_log.values()))}"
-        db.execute(sql=insert_sql, need_commit=True)
+        if diff_log:
+            change_log = {
+                "record_id": record_detail_id,
+                "operator_account": json_data.get('operator_account', ''),
+                "operator_name": json_data.get('operator_name', ''),
+                "operate_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "log": json.dumps(diff_log, default=str, ensure_ascii=False)
+            }
+            insert_sql = f"INSERT INTO nsyy_gyl.ehp_medical_change_log ({','.join(change_log.keys())}) " \
+                         f"VALUES {str(tuple(change_log.values()))}"
+            db.execute(sql=insert_sql, need_commit=True)
         del db
     except Exception as e:
         del db
@@ -329,14 +331,9 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
     for item in shiguang_reports:
         if not item.get('check_time') or not item.get('check_time').__contains__(report_date):
             continue
-        if item.get('type') == '翻转拍':
-            item['value_well'] = {'af': item.get('value_well')}
         if item.get('check_time').__contains__(report_date or ''):
             tmp = item.get('value_well')
-            if item.get('type') == '翻转拍':
-                shiguang_data['af'] = tmp
-            else:
-                shiguang_data = {**shiguang_data, **tmp}
+            shiguang_data = {**shiguang_data, **tmp}
 
     return {"report_list": {
                         'bind_report': report_group,
@@ -464,8 +461,28 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
                                     "map_os_v": merged_dict.get('l_pk1', '')
                                 }
                             }
+                },
+                "眼视光复诊病历": {
+                    "check2": shiguang_data.get('nra', ''),
+                    "check3": shiguang_data.get('pra', ''),
+                    "check4": shiguang_data.get('aca', ''),
+                    "check6": shiguang_data.get('ar', {}).get('od'),
+                    "check7": shiguang_data.get('ar', {}).get('os'),
+                    "check8": shiguang_data.get('ar', {}).get('ou'),
+                    "check9": shiguang_data.get('af', {}).get('od'),
+                    "check10": shiguang_data.get('af', {}).get('os'),
+                    "check11": shiguang_data.get('af', {}).get('ou'),
+                    "check13": shiguang_data.get('fv', {}).get('bim'),
+                    "check14": shiguang_data.get('fv', {}).get('bif'),
+                    "check15": shiguang_data.get('fv', {}).get('bih'),
+                    "check16": shiguang_data.get('fv', {}).get('bom'),
+                    "check17": shiguang_data.get('fv', {}).get('bof'),
+                    "check18": shiguang_data.get('fv', {}).get('boh'),
+                    "subjective_od": merged_dict.get('r_al', ''),
+                    "subjective_os": merged_dict.get('l_al', ''),
+
                 }
-            }
+    }
 
 
 """查询历史未绑定报告"""
