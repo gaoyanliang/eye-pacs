@@ -667,7 +667,7 @@ def regularly_parsing_eye_report():
                 patients = ehp_server.query_patient_by_name(patient_name)
                 if patients:
                     register_id = patients[0].get('挂号id')
-                    patient_id = patients[0].get('门诊号')
+                    patient_id = patients[0].get('病人id')
                     bind_sql = f" , register_id = '{register_id}', patient_id = '{patient_id}'"
             db.execute(f"UPDATE nsyy_gyl.ehp_reports SET report_name = '{report_name}', "
                        f"report_value = '{report_value}', report_machine = '{machine}' {bind_sql} "

@@ -95,6 +95,9 @@ def new_patient(json_data):
     except Exception as e:
         raise Exception("新患者创建失败! ", e)
 
+    auto_bind_report(json_data.get('name'))
+    print()
+
 
 """删除自己创建的患者"""
 
@@ -297,10 +300,10 @@ def get_birthday_from_id(id_number):
 """查询报告列表"""
 
 
-def query_report_list(register_id, patient_name: str = '', report_date: str = ''):
+def query_report_list(patient_id, patient_name: str = '', report_date: str = ''):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
-    report_list = db.query_all(f"SELECT *, YEAR(report_time) as year FROM nsyy_gyl.ehp_reports where register_id = '{register_id}' "
+    report_list = db.query_all(f"SELECT *, YEAR(report_time) as year FROM nsyy_gyl.ehp_reports where patient_id = '{patient_id}' "
                                f"or ((register_id is null or register_id = '') and  DATE(report_time) = CURRENT_DATE()) order by report_time")
     del db
 
@@ -478,8 +481,8 @@ def query_report_list(register_id, patient_name: str = '', report_date: str = ''
                     "check16": shiguang_data.get('fv', {}).get('bom'),
                     "check17": shiguang_data.get('fv', {}).get('bof'),
                     "check18": shiguang_data.get('fv', {}).get('boh'),
-                    "subjective_od": merged_dict.get('r_al', ''),
-                    "subjective_os": merged_dict.get('l_al', ''),
+                    "check25_od": merged_dict.get('r_al', ''),
+                    "check25_os": merged_dict.get('l_al', ''),
 
                 }
     }
@@ -630,7 +633,7 @@ def query_patient_info(key, guahao_id, date_str):
             params = {}
         else:
             # 查询特定挂号ID的详细信息
-            sql = """SELECT t.id 挂号ID, t.no, t.门诊号, t2.就诊卡号, t2.住院号 病案号, t.姓名 AS 患者姓名, t.性别, 
+            sql = """SELECT t.id 挂号ID, t.no,t.病人id, t.门诊号, t2.就诊卡号, t2.住院号 病案号, t.姓名 AS 患者姓名, t.性别, 
                             TO_CHAR(t2.出生日期, 'YYYY/MM/DD') as 出生日期, \
                          t2.婚姻状况, t2.国籍, t2.民族, '身份证' 证件类型, t2.身份证号 证件号码, \
                          t2.家庭地址 现住址, t2.家庭电话 联系电话, t.登记时间 挂号时间, t.登记时间 报道时间, \
@@ -694,7 +697,7 @@ def query_patient_by_name(name):
 
 """处理已解析的报告但是为绑定 - 作报告在前 挂号在后"""
 
-def auto_bind_report():
+def auto_bind_report(name: str = ""):
     db = DbUtil(global_config.DB_HOST, global_config.DB_USERNAME, global_config.DB_PASSWORD,
                 global_config.DB_DATABASE_GYL)
     report_list = db.query_all(f"SELECT * FROM nsyy_gyl.ehp_reports "
@@ -710,6 +713,8 @@ def auto_bind_report():
                 continue
             values = json.loads(values)
             patient_name = values.get('name', '')
+            if name and name != patient_name:
+                continue
             if patient_name:
                 patients = query_patient_by_name(patient_name)
                 if patients:

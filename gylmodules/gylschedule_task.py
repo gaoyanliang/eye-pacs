@@ -12,7 +12,6 @@ gylmodule_scheduler = BackgroundScheduler(timezone="Asia/Shanghai", executors=ex
 logger = logging.getLogger(__name__)
 
 
-3
 def schedule_task():
     # ====================== 定时任务 ======================
     gylmodule_scheduler.add_job(regularly_parsing_eye_report, trigger='interval', seconds=2*60)
