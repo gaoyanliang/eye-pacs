@@ -637,7 +637,7 @@ def query_patient_info(key, guahao_id, date_str):
                             TO_CHAR(t2.出生日期, 'YYYY/MM/DD') as 出生日期, \
                          t2.婚姻状况, t2.国籍, t2.民族, '身份证' 证件类型, t2.身份证号 证件号码, \
                          t2.家庭地址 现住址, t2.家庭电话 联系电话, t.登记时间 挂号时间, t.登记时间 报道时间, \
-                         t.执行时间 就诊时间, fy.执行部门 就诊科室, t.执行人, ry.专业技术职务 职称,
+                         t.发生时间 as 就诊日期, t.执行时间 就诊时间, fy.执行部门 就诊科室, t.执行人, ry.专业技术职务 职称,
                          CASE WHEN fy.执行部门 LIKE '%急诊%' THEN '急诊' ELSE '门诊' END 就诊类型, 
                          DECODE(t.复诊, 1, '是', '否') 是否复诊
                 FROM 病人挂号记录 t JOIN 病人信息 t2 ON t.病人id = t2.病人id
