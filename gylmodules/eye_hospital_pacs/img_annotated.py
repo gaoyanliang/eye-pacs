@@ -27,7 +27,7 @@ def draw_rectangle_on_image(image_path, coordinates, save_path=None):
     img = Image.open(image_path)
     draw = ImageDraw.Draw(img)
     # 绘制矩形框
-    draw.polygon([tuple(p) for p in coordinates], outline="red", width=3)
+    draw.polygon([tuple(p) for p in coordinates], outline="red", width=1)
     if save_path:
         img.save(save_path)
         print(f"标注图已保存: {save_path}")
@@ -159,39 +159,25 @@ def get_pdf_page_size(pdf_path):
 # pdf_file = "/Users/gaoyanliang/Downloads/bi_qianxi_2025021003_OS_2025-02-10__18-26-12.pdf"
 
 
-pdf_file = r"C:\Users\Administrator\Desktop\eye-pacs\gylmodules\eye_hospital_pacs\Wang_Honglei_OS_11092025_110222_4 Maps Refr_20250911161528.pdf"
 
 
+# 屈光四图 图片
+coordinates = [[420, 150], [580, 150], [580, 200], [420, 200]]  # 标志
+coordinates = [[110, 205], [190, 205], [190, 225], [110, 225]]  # 姓
+coordinates = [[110, 228], [190, 228], [190, 249], [110, 249]]  # 名
+coordinates = [[250, 275], [310, 275], [310, 295], [250, 295]]  # 左右眼
+coordinates = [[255, 380], [315, 380], [315, 400], [255, 400]]  # k1
+coordinates = [[255, 415], [315, 415], [315, 430], [255, 430]]  # k2
+coordinates = [[135, 445], [210, 445], [210, 464], [135, 464]]  # rm
+coordinates = [[135, 808], [207, 808], [207, 828], [135, 828]]  # 最薄点位置
+coordinates = [[135, 930], [204, 930], [204, 950], [135, 950]]  # 前房深度
+coordinates = [[265, 870], [323, 870], [323, 890], [265, 890]]  # 水平方向白到白
 
-pdf_file = r"E:\test_share1\4.pdf"
-pdf_file = r"E:\pdf_share\0.pdf"
-pdf_file = r"E:\pdf_share\R P+C.pdf"
-pdf_file = r"E:\pdf_share\Master700.pdf"
-pdf_file = r"E:\pdf_share\图像总览53.pdf"
-pdf_file = "/Users/gaoyanliang/Downloads/3 (2)_20251111101643.pdf"
-# pdf_file = r"E:\pdf_share\角膜地形图31.pdf"
-# pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/屈光四图-横版.pdf"
-pdf_file = "/Users/gaoyanliang/各个系统文档整理/眼科医院/眼科医院仪器检查报告和病历/已经解析的所有病历/阿玛仕手术报告.pdf"
+# annotated_image = draw_rectangle_on_image("/Users/gaoyanliang/Downloads/Zhang_Liangjie_OS_30122025_150957_4 Maps Refr.PNG", coordinates, "annotated.jpg")
+annotated_image = draw_rectangle_on_image("/Users/gaoyanliang/Downloads/Zhang_Yabin_OD_05012026_091431_4 Maps Refr.JPG", coordinates, "annotated.jpg")
 
-# 房角OCT-右眼.pdf
-# 房角OCT-左眼.pdf
-# 黄斑OCT.pdf
-# 频域前节OCT拱高测量-右眼.pdf
-# 频域前节OCT拱高测量-左眼.pdf
-# 前节OCT-右眼.pdf
-# 前节OCT-左眼.pdf
-# 视神经OCT.pdf
-# 血流OCT-右眼.pdf
-# 血流OCT-左眼.pdf
-pdf_file = "/Users/gaoyanliang/Downloads/黄斑OCT.pdf"
-pdf_file = r"E:\pdf_share\B超报告单1.pdf"
 
-output_directory = "."  # 替换为你的输出目录
-saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
-print("转换完成的 JPG 文件完整路径:")
-for path in saved_jpgs:
-    print(path)
-
+#
 
 
 # 使用示例 屈光四图  竖版
@@ -361,7 +347,7 @@ for path in saved_jpgs:
 
 # OCT 竖版
 # coordinates = [[2180, 20], [2450, 20], [2450, 125], [2180, 125]]  # 标识
-coordinates = [[20, 20], [250, 20], [250, 125], [20, 125]]  # 左右眼
+# coordinates = [[20, 20], [250, 20], [250, 125], [20, 125]]  # 左右眼
 # coordinates = [[130, 130], [350, 130], [350, 195], [130, 195]]  # 患者姓名
 
 # OCT 横版
@@ -371,11 +357,22 @@ coordinates = [[20, 20], [250, 20], [250, 125], [20, 125]]  # 左右眼
 
 
 # B超报告单.pdf"
-coordinates = [[1530, 140], [2000, 140], [2000, 270], [1530, 270]]  # 标识
-coordinates = [[230, 260], [610, 260], [610, 400], [230, 400]]  # 患者姓名
+# coordinates = [[1530, 140], [2000, 140], [2000, 270], [1530, 270]]  # 标识
+# coordinates = [[230, 260], [610, 260], [610, 400], [230, 400]]  # 患者姓名
 
 
-annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
+
+
+# pdf_file = "/Users/gaoyanliang/Downloads/黄斑OCT.pdf"
+# pdf_file = r"E:\pdf_share\B超报告单1.pdf"
+#
+# output_directory = "."  # 替换为你的输出目录
+# saved_jpgs = pdf_to_jpg(pdf_file, output_directory)
+# print("转换完成的 JPG 文件完整路径:")
+# for path in saved_jpgs:
+#     print(path)
+#
+# annotated_image = draw_rectangle_on_image(saved_jpgs[0], coordinates, "annotated.jpg")
 
 
 def process_pdf_with_orientation(pdf_path):

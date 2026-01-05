@@ -651,10 +651,18 @@ def regularly_parsing_eye_report():
     try:
         for report in report_list:
             file_path = report.get('report_addr').replace('&', '/')
-            if not os.path.exists(file_path) and not str(file_path).endswith(".pdf") :
+            if not os.path.exists(file_path):
                 continue
 
-            final_file_name, machine, values = analysis_pdf(file_path)
+            if str(file_path).endswith(".pdf") or str(file_path).endswith(".PDF"):
+                final_file_name, machine, values = analysis_pdf(file_path)
+            elif (str(file_path).endswith(".jpg") or str(file_path).endswith(".JPG")
+                  or str(file_path).endswith(".png") or str(file_path).endswith(".PNG")):
+                final_file_name, machine, values = analysis_img(file_path)
+            else:
+                print(f"{datetime.now()} {file_path} 不支持解析的文件类型")
+                continue
+
             patient_name = values.get('name', '')
             if not values:
                 values = {"res": "analysis failed"}
@@ -702,6 +710,123 @@ def ocr_captcha(base64_str):
         return ''
 
 
+def analysis_img(img_path):
+    if not file_path.endswith(".png") and not file_path.endswith(".PNG") and not file_path.endswith(".jpg") and not file_path.endswith(".JPG"):
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {file_path} 非图片报告无法解析")
+        return None, {}
+    ret_data = {}
+    final_file_name = ''
+    start_time = time.time()
+    machine = '未收录设备'
+    try:
+        # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
+        saved_jpgs = [img_path]
+
+        processor = OCRProcessor()
+        # 解析并判断文件类型
+        machine = ''
+        analy_name = Path(file_path).stem
+        final_file_name = analy_name
+        if analy_name.__contains__('4 Maps Refr'):
+            machine = '眼前节分析仪'
+            final_file_name = '屈光四图'
+            # 图片不区分 横/竖 "xing": (110, 205, 190, 225), "ming": (110, 228, 190, 249), "eye": (250, 275, 310, 295),
+            regions = {
+                "k1": (255, 380, 315, 400), "k2": (255, 415, 315, 430), "rm": (135, 445, 210, 464),
+                "thinnest_point": (135, 808, 207, 828), "depth": (135, 930, 204, 950),
+                "distance": (265, 870, 323, 890)
+            }
+            for key, region in regions.items():
+                try:
+                    ret_data[key] = processor.ocr_image(saved_jpgs[0], region)
+                except Exception as e:
+                    print(datetime.now(), f'解析 {saved_jpgs[0]} 坐标区域 {key} 失败: {e}')
+
+            pattern = re.compile(r'^(?P<name>[A-Za-z]+_[A-Za-z]+)_(?P<eye>OD|OS)_')
+            match = pattern.search(analy_name)
+            if match:
+                raw_name = match.group("name")
+                eye_code = match.group("eye")
+
+                ret_data['name'] = raw_name.replace("_", " ")
+                ret_data['eye'] = "右眼" if eye_code == "OD" else "左眼"
+
+            ret_data['name'] = ret_data['name'].replace(' ', '').replace(',', '')\
+                .replace('，', '').replace('.', '').replace('。', '')
+            if ret_data.get("eye").__contains__('左眼') or ret_data.get("eye").__contains__('左'):
+                final_file_name = f"{final_file_name}-左眼"
+                ret_data['l_k1'] = ret_data.pop("k1")
+                ret_data['l_k2'] = ret_data.pop("k2")
+                ret_data['l_rm'] = ret_data.pop("rm")
+                ret_data['l_thinnest_point'] = ret_data.pop("thinnest_point")
+                ret_data['l_depth'] = ret_data.pop("depth")
+                ret_data['l_distance'] = ret_data.pop("distance")
+            else:
+                final_file_name = f"{final_file_name}-右眼"
+                ret_data['r_k1'] = ret_data.pop("k1")
+                ret_data['r_k2'] = ret_data.pop("k2")
+                ret_data['r_rm'] = ret_data.pop("rm")
+                ret_data['r_thinnest_point'] = ret_data.pop("thinnest_point")
+                ret_data['r_depth'] = ret_data.pop("depth")
+                ret_data['r_distance'] = ret_data.pop("distance")
+        elif analy_name.__contains__('Enhanced Ectasia'):
+            machine = '眼前节分析仪'
+            final_file_name = '屈光六图'
+            ret_data = {"name": '', "eye": ''}
+            pattern = re.compile(r'^(?P<name>[A-Za-z]+_[A-Za-z]+)_(?P<eye>OD|OS)_')
+            match = pattern.search(analy_name)
+            if match:
+                raw_name = match.group("name")
+                eye_code = match.group("eye")
+
+                ret_data['name'] = raw_name.replace("_", " ")
+                ret_data['eye'] = "右眼" if eye_code == "OD" else "左眼"
+
+            ret_data['name'] = ret_data['name'].replace(' ', '').replace(',', '')\
+                .replace('，', '').replace('.', '').replace('。', '')
+            if ret_data['eye'].__contains__('左眼') or ret_data['eye'].__contains__('左'):
+                final_file_name = f"{final_file_name}-左眼"
+            else:
+                final_file_name = f"{final_file_name}-右眼"
+        elif analy_name.__contains__('TBI'):
+            machine = '非接触式眼压计'
+            final_file_name = '生物力学'
+            ret_data = {"name": '', "eye": ''}
+            pattern = re.compile(r'^(?P<name>[A-Za-z]+_[A-Za-z]+).*?(?P<eye>OD|OS|Right|Left)', re.IGNORECASE)
+            match = pattern.search(analy_name)
+            if match:
+                raw_name = match.group("name")
+                eye_code = match.group("eye")
+
+                ret_data['name'] = raw_name.replace("_", " ")
+                ret_data['eye'] = "右眼" if eye_code == "OD" else "左眼"
+
+            ret_data['name'] = ret_data.get('name', '').replace(' ', '').replace(',', '') \
+                .replace('，', '').replace('.', '').replace('。', '')
+            if ret_data['eye'].__contains__('OS') or ret_data['eye'].__contains__('os') or \
+                    ret_data['eye'].__contains__('Left') or ret_data['eye'].__contains__('left'):
+                final_file_name = f"{final_file_name}-左眼"
+            else:
+                final_file_name = f"{final_file_name}-右眼"
+        else:
+           print(f"{datetime.now()} {file_path} 暂不支持解析")
+    except Exception as e:
+        print(f"{datetime.now()} {file_path} 解析报告异常 {e}")
+
+    for k, v in ret_data.items():
+        if str(v).endswith('s') or str(v).endswith('um') or str(v).endswith('mm') or str(v).endswith('μm') \
+                or str(v).endswith('毫米') or str(v).endswith('微米') or str(v).endswith('D') \
+                or str(v).endswith('x') or str(v).endswith('Dx'):
+            ret_data[k] = (str(v).replace('mm', '').replace('μm', '')
+                           .replace('毫米', '').replace('微米', '')
+                           .replace('D', '').replace('Dx', '')
+                           .replace('x', '').replace('um', '').replace('s', ''))
+
+    print(f"{datetime.now()} {file_path} 解析报告成功, 总耗时 {time.time() - start_time}")
+    return final_file_name, machine, ret_data
+
+
+
 if __name__ == "__main__":
     start_time = time.time()
     file_path = r"E:\pdf_share\屈光四图-横版.pdf"
@@ -738,12 +863,18 @@ if __name__ == "__main__":
     # file_path = "/Users/gaoyanliang/Downloads/前节OCT-左眼.pdf"
     # file_path = "/Users/gaoyanliang/Downloads/血流OCT-右眼.pdf"
     # file_path = "/Users/gaoyanliang/Downloads/血流OCT-左眼.pdf"
-    # file_path = "/Users/gaoyanliang/Downloads/视神经OCT.pdf"
-    #
-    # final_file_name, machine, values = analysis_pdf(file_path)
-    # print(final_file_name)
-    # print(machine)
-    # print(values)
+    file_path = "/Users/gaoyanliang/Downloads/Zhang_Liangjie_OS_30122025_150957_4 Maps Refr.PNG"
+    file_path = "/Users/gaoyanliang/Downloads/Han_Jindong_()_Left_20251231_092059_TBI.jpg"
+    # file_path = "/Users/gaoyanliang/Downloads/Ren_Shihao_OS_25122025_100135_4 Maps Refr.PNG"
+    # file_path = "/Users/gaoyanliang/Downloads/Ren_Shihao_OS_25122025_100135_Enhanced Ectasia.PNG"
+    # file_path = "/Users/gaoyanliang/Downloads/Ye_Hui_OS_26122025_113902_4 Maps Refr.PNG"
+    # file_path = "/Users/gaoyanliang/Downloads/Han_Jindong_()_Right_20251231_092046_TBI.jpg"
+    # file_path = "/Users/gaoyanliang/Downloads/Zhang_Yabin_OD_05012026_091431_4 Maps Refr.JPG"
+
+    final_file_name, machine, values = analysis_img(file_path)
+    print(final_file_name)
+    print(machine)
+    print(values)
 
 
     # data = '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'

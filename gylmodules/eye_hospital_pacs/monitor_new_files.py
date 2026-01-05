@@ -159,8 +159,12 @@ def monitor_directory():
                         pass
                     continue
 
-                if str(filename).startswith('.') or not str(filename).endswith('pdf'):
+                if str(filename).startswith('.'):
                     continue
+                if not (str(filename).endswith('pdf') or str(filename).__contains__('4 Maps Refr')
+                        or str(filename).__contains__('Enhanced Ectasia') or str(filename).__contains__('TBI')):
+                    continue
+
                 src_path = os.path.join(root, filename)
                 rel_path = os.path.relpath(src_path, SOURCE_DIR)
 
