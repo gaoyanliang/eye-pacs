@@ -710,7 +710,7 @@ def ocr_captcha(base64_str):
         return ''
 
 
-def analysis_img(img_path):
+def analysis_img(file_path):
     if not file_path.endswith(".png") and not file_path.endswith(".PNG") and not file_path.endswith(".jpg") and not file_path.endswith(".JPG"):
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {file_path} 非图片报告无法解析")
         return None, {}
@@ -720,7 +720,7 @@ def analysis_img(img_path):
     machine = '未收录设备'
     try:
         # 将pdf文件转换为图片，方便解析, 如果pdf有多页，则会生成多个图片，默认取第一张
-        saved_jpgs = [img_path]
+        saved_jpgs = [file_path]
 
         processor = OCRProcessor()
         # 解析并判断文件类型
