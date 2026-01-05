@@ -27,7 +27,7 @@ def delete_patient(json_data):
 @api_response
 def ehp_data():
     return {
-        "visit_dept_list": ["干眼门诊", "眼科门诊", "屈光手术门诊"],
+        "visit_dept_list": ["视光门诊", "眼科门诊", "屈光手术门诊"],
         "doc_name_list": ["王豪", "赵举", "白石", "贾玲", "李剑波", "余建咪", "朱豫", "张艳", "侯习武", "张君苒", "雷鸣", "景聪荣", "余庆阳", "景聪荣", "景聪荣"]
     }
 
